@@ -4,7 +4,8 @@ GoldenScope AI is a two-sided clinical web platform for Goldenhar Syndrome scree
 
 ## Stack
 
-- React 19 + TypeScript + Vite
+- Next.js 16
+- React 19 + TypeScript
 - shadcn/ui + Tailwind CSS v4
 - Zustand for client state
 - React Hook Form + Zod for validated forms
@@ -27,13 +28,16 @@ GoldenScope AI is a two-sided clinical web platform for Goldenhar Syndrome scree
 ¦       +-- GoldenharAI_final.keras
 +-- public/
 +-- src/
-¦   +-- app/
+¦   +-- core/
 ¦   +-- features/
+¦   +-- next/
+¦   +-- pages/
 ¦   +-- shared/
 +-- supabase/
 ¦   +-- schema.sql
++-- next.config.mjs
++-- postcss.config.mjs
 +-- package.json
-+-- vercel.json
 ```
 
 ## Core Product Areas
@@ -55,7 +59,7 @@ GoldenScope AI is a two-sided clinical web platform for Goldenhar Syndrome scree
    `cd backend`
    `pip install -r requirements.txt`
    `uvicorn goldenscope_inference_api:app --host 0.0.0.0 --port 8000`
-5. In a second terminal, run the frontend
+5. In a second terminal, run the frontend from the repo root
    `npm run dev`
 6. Production build
    `npm run build`
@@ -63,11 +67,11 @@ GoldenScope AI is a two-sided clinical web platform for Goldenhar Syndrome scree
 ## Vercel Deployment
 
 - Deploy the repository root to Vercel.
-- `vercel.json` is included for Vite build output and SPA route rewrites.
+- The frontend now runs as a Next.js app, so Vercel auto-detects it.
 - Set these environment variables in Vercel:
-  - `VITE_SUPABASE_URL`
-  - `VITE_SUPABASE_ANON_KEY`
-  - `VITE_RAILWAY_INFERENCE_URL`
+  - `NEXT_PUBLIC_SUPABASE_URL`
+  - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+  - `NEXT_PUBLIC_RAILWAY_INFERENCE_URL`
 
 ## Railway Deployment
 
@@ -92,5 +96,5 @@ Exposed API routes:
 ## Notes
 
 - In development, the frontend defaults to `http://127.0.0.1:8000/predict`.
-- In production, set `VITE_RAILWAY_INFERENCE_URL` to your Railway FastAPI endpoint.
+- In production, set `NEXT_PUBLIC_RAILWAY_INFERENCE_URL` to your Railway FastAPI endpoint.
 - The repo is structured for split deployment: Vercel for frontend, Railway for inference.

@@ -1,5 +1,5 @@
 import { Navigate, Route, Routes } from "react-router-dom";
-import { PortalLayout } from "@/app/layout/PortalLayout";
+import { PortalLayout } from "@/core/layout/PortalLayout";
 import Landing from "@/features/marketing/pages/Landing";
 import Login from "@/features/auth/pages/Login";
 import Register from "@/features/auth/pages/Register";
@@ -14,7 +14,7 @@ import PatientList from "@/features/doctor/pages/PatientList";
 import ScanDetail from "@/features/doctor/pages/ScanDetail";
 import Referrals from "@/features/doctor/pages/Referrals";
 import Analytics from "@/features/doctor/pages/Analytics";
-import { ProtectedRoute } from "@/app/router/ProtectedRoute";
+import { ProtectedRoute } from "@/core/router/ProtectedRoute";
 
 export default function App() {
   return (
@@ -53,3 +53,4 @@ export default function App() {
     </Routes>
   );
 }
+
