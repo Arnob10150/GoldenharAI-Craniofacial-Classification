@@ -4,7 +4,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { BrainCircuit } from "lucide-react";
+import { ArrowLeft, BrainCircuit } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
@@ -114,6 +114,14 @@ export default function Register() {
 
       <Card className="rounded-[2rem] border-border/70 bg-card/90 shadow-xl shadow-primary/5">
         <CardHeader className="space-y-4">
+          <div>
+            <Button asChild variant="ghost" className="gap-2 px-0 text-muted-foreground hover:text-foreground">
+              <Link to="/">
+                <ArrowLeft className="size-4" />
+                Return to home
+              </Link>
+            </Button>
+          </div>
           <div className="flex size-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
             <BrainCircuit className="size-6" />
           </div>
