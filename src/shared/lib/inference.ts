@@ -115,6 +115,8 @@ const toErrorMessage = async (response: Response) => {
   }
 };
 
+const INFERENCE_TIMEOUT_MS = 120000;
+
 export const requestInference = async (image: File, patientAge: number, patientSex: ChildSex): Promise<InferenceResponse> => {
   const formData = new FormData();
   formData.append("image", image);
@@ -122,7 +124,7 @@ export const requestInference = async (image: File, patientAge: number, patientS
   formData.append("patient_sex", patientSex);
 
   const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), 45000);
+  const timeout = window.setTimeout(() => controller.abort(), INFERENCE_TIMEOUT_MS);
 
   try {
     const response = await fetch(inferenceUrl, {
@@ -155,7 +157,10 @@ export const requestInference = async (image: File, patientAge: number, patientS
     return normalized;
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
-      throw new Error("Inference request timed out. Check that the local model service is running.");
+      throw new Error("Inference request timed out. Railway may still be cold-starting the model. Please wait a few seconds and try again.");
+    }
+    if (error instanceof TypeError) {
+      throw new Error("Unable to reach the inference service. This is usually a deployment URL, CORS, or Railway startup issue.");
     }
     throw error instanceof Error ? error : new Error("Unable to complete model inference.");
   } finally {

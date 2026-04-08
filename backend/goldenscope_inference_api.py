@@ -184,6 +184,28 @@ REGION_TEMPLATES = {
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
 
 
+def parse_cors_origins() -> list[str]:
+    default_origins = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:4173",
+        "http://127.0.0.1:4173",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
+    configured_origins = [
+        origin.strip()
+        for origin in os.getenv("CORS_ORIGINS", "").split(",")
+        if origin.strip()
+    ]
+
+    unique_origins: list[str] = []
+    for origin in [*default_origins, *configured_origins]:
+        if origin not in unique_origins:
+            unique_origins.append(origin)
+    return unique_origins
+
+
 def squeeze_excite_block(x: tf.Tensor, reduction: int = 8, name: str = "se") -> tf.Tensor:
     channels = int(x.shape[-1])
     pooled = layers.GlobalAveragePooling2D(name=f"{name}_gap")(x)
@@ -509,13 +531,9 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:4173",
-        "http://127.0.0.1:4173",
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ],
-    allow_credentials=True,
+    allow_origins=parse_cors_origins(),
+    allow_origin_regex=os.getenv("CORS_ORIGIN_REGEX", r"https://.*"),
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
