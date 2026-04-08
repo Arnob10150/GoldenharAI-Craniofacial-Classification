@@ -1,5 +1,6 @@
 import { UploadCloud, X } from "lucide-react";
 import { useDropzone } from "react-dropzone";
+import { toast } from "sonner";
 import { Button } from "@/shared/ui/button";
 import { Card, CardContent } from "@/shared/ui/card";
 import { cn } from "@/shared/lib/utils";
@@ -13,8 +14,12 @@ export const UploadDropzone = ({ value, onChange }: UploadDropzoneProps) => {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: { "image/*": [] },
     multiple: false,
+    maxSize: 10 * 1024 * 1024,
     onDrop: (acceptedFiles) => {
       onChange(acceptedFiles[0] ?? null);
+    },
+    onDropRejected: () => {
+      toast.error("Image upload failed. Use a JPG, PNG, or HEIC file under 10 MB.");
     },
   });
 

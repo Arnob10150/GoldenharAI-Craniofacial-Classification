@@ -157,7 +157,15 @@ const readMockDb = (): DatabaseState => {
 
 const persistMockDb = (db: DatabaseState, event?: NotificationEvent) => {
   if (!hasWindow) return;
-  window.localStorage.setItem(DB_KEY, JSON.stringify(db));
+  try {
+    window.localStorage.setItem(DB_KEY, JSON.stringify(db));
+  } catch (error) {
+    const trimmedDb = createStorageSafeSnapshot(db);
+    window.localStorage.setItem(DB_KEY, JSON.stringify(trimmedDb));
+    if (!(error instanceof DOMException)) {
+      throw error;
+    }
+  }
   if (event) {
     window.localStorage.setItem(EVENT_KEY, JSON.stringify({ ...event, ts: Date.now() }));
     mockChannel?.postMessage(event);
@@ -217,6 +225,52 @@ const fileToDataUrl = (file: File) =>
     reader.readAsDataURL(file);
   });
 
+const compressImageForStorage = async (file: File) => {
+  if (!hasWindow || typeof Image === "undefined") {
+    return fileToDataUrl(file);
+  }
+
+  const sourceUrl = await fileToDataUrl(file);
+
+  return new Promise<string>((resolve) => {
+    const image = new Image();
+    image.onload = () => {
+      const maxDimension = 960;
+      const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
+      const width = Math.max(1, Math.round(image.width * scale));
+      const height = Math.max(1, Math.round(image.height * scale));
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+
+      if (!ctx) {
+        resolve(sourceUrl);
+        return;
+      }
+
+      ctx.drawImage(image, 0, 0, width, height);
+      resolve(canvas.toDataURL("image/jpeg", 0.72));
+    };
+    image.onerror = () => resolve(sourceUrl);
+    image.src = sourceUrl;
+  });
+};
+
+const createStorageSafeSnapshot = (db: DatabaseState): DatabaseState => {
+  const largeDataUrl = /^data:image\//i;
+  const keepImageForScanId = db.scans[0]?.id ?? null;
+
+  return {
+    ...db,
+    scans: db.scans.map((scan) => {
+      if (!largeDataUrl.test(scan.image_url)) return scan;
+      if (scan.id === keepImageForScanId) return scan;
+      return { ...scan, image_url: "" };
+    }),
+  };
+};
+
 const uploadScanImage = async (file: File): Promise<string> => {
   if (isSupabaseConfigured && supabase) {
     try {
@@ -233,7 +287,7 @@ const uploadScanImage = async (file: File): Promise<string> => {
       // fall back to local data URL
     }
   }
-  return fileToDataUrl(file);
+  return compressImageForStorage(file);
 };
 
 const roleCanSeeChild = (profile: Profile, child: Child) => {
