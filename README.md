@@ -23,6 +23,7 @@ GoldenScope AI is a two-sided clinical web platform for Goldenhar Syndrome scree
 ¦   +-- goldenscope_inference_api.py
 ¦   +-- railway.json
 ¦   +-- requirements.txt
+¦   +-- runtime.txt
 ¦   +-- models/
 ¦       +-- morphofusion_enhanced_best.weights.h5
 ¦       +-- GoldenharAI_final.keras
@@ -39,14 +40,6 @@ GoldenScope AI is a two-sided clinical web platform for Goldenhar Syndrome scree
 +-- postcss.config.mjs
 +-- package.json
 ```
-
-## Core Product Areas
-
-- Landing page with role-based entry points
-- Parent portal: new scan, scan history, child profiles, PDF export
-- Doctor/CHW portal: dashboard, new scan, patient list, scan detail, referrals, analytics
-- Explainability, surgical windows, comorbidity summaries, and referral workflows
-- Supabase-ready auth, storage, database, and realtime patterns
 
 ## Local Development
 
@@ -77,7 +70,9 @@ GoldenScope AI is a two-sided clinical web platform for Goldenhar Syndrome scree
 
 - Create a Railway service from the same repository.
 - Set the Railway service Root Directory to `backend`.
+- Use the backend folder as the service source, not the repo root.
 - `backend/railway.json` is included with the FastAPI start command.
+- `backend/runtime.txt` pins Python 3.11 for TensorFlow compatibility.
 - `backend/models` already includes the current MorphoFusion and fallback legacy model artifacts.
 - Optional Railway environment variables:
   - `GOLDENSCOPE_MODEL_WEIGHTS`
