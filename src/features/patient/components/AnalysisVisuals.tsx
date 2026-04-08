@@ -1,0 +1,205 @@
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui/card";
+import type { Child, RiskLevel, ScanRecord } from "@/shared/lib/types";
+
+const riskToScore: Record<RiskLevel, number> = {
+  low: 1,
+  medium: 2,
+  high: 3,
+};
+
+const riskColor: Record<RiskLevel, string> = {
+  low: "#1D9E75",
+  medium: "#854F0B",
+  high: "#A32D2D",
+};
+
+const classificationColor = (classification: ScanRecord["classification"]) => {
+  switch (classification) {
+    case "positive":
+      return "#A32D2D";
+    case "negative":
+      return "#1D9E75";
+    default:
+      return "#854F0B";
+  }
+};
+
+const toNumericTooltipValue = (value: number | string | readonly (number | string)[] | undefined) => {
+  if (Array.isArray(value)) {
+    return Number(value[0] ?? 0);
+  }
+  return Number(value ?? 0);
+};
+
+const formatPercentTooltip = (value: number | string | readonly (number | string)[] | undefined) => `${toNumericTooltipValue(value)}%`;
+const formatRiskTooltip = (value: number | string | readonly (number | string)[] | undefined) => {
+  const numeric = toNumericTooltipValue(value);
+  return numeric <= 1 ? "Low" : numeric === 2 ? "Medium" : "High";
+};
+
+interface AnalysisVisualsProps {
+  scan: ScanRecord;
+  child?: Child | null;
+}
+
+export const AnalysisVisuals = ({ scan, child }: AnalysisVisualsProps) => {
+  const confidenceData = [
+    { name: "confidence", value: Math.round(scan.confidence * 100) },
+    { name: "remaining", value: 100 - Math.round(scan.confidence * 100) },
+  ];
+
+  const segmentationData = scan.segmentation_data.map((item) => ({
+    label: item.label.replaceAll("_", " "),
+    confidence: Math.round(item.confidence * 100),
+  }));
+
+  const xaiData = scan.xai_data.map((region) => ({
+    region: region.region.replaceAll("_", " "),
+    attention: Math.round(region.attention * 100),
+  }));
+
+  const comorbidityData = scan.comorbidity_flags.map((flag) => ({
+    condition: flag.condition.replaceAll("_", " "),
+    risk: riskToScore[flag.risk],
+    label: flag.risk,
+    color: riskColor[flag.risk],
+  }));
+
+  const age = child ? new Date().getFullYear() - new Date(child.dob).getFullYear() : null;
+
+  return (
+    <div className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
+      <Card className="overflow-hidden border-border/70 shadow-sm">
+        <CardHeader>
+          <CardTitle>Input image and confidence summary</CardTitle>
+          <CardDescription>
+            The uploaded input is shown alongside the model confidence and top-level classification signal.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="overflow-hidden rounded-3xl border border-border/60 bg-muted/20">
+            <img src={scan.image_url} alt="Input clinical scan" className="h-full min-h-72 w-full object-cover" />
+          </div>
+          <div className="flex flex-col justify-between gap-6">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-2xl bg-muted/35 p-4">
+                <div className="text-sm text-muted-foreground">Classification</div>
+                <div className="mt-2 text-2xl font-semibold capitalize">{scan.classification}</div>
+              </div>
+              <div className="rounded-2xl bg-muted/35 p-4">
+                <div className="text-sm text-muted-foreground">Variant</div>
+                <div className="mt-2 text-2xl font-semibold capitalize">{scan.variant.replaceAll("_", " ")}</div>
+              </div>
+            </div>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={confidenceData}
+                    dataKey="value"
+                    innerRadius={70}
+                    outerRadius={98}
+                    startAngle={90}
+                    endAngle={-270}
+                    stroke="none"
+                  >
+                    <Cell fill={classificationColor(scan.classification)} />
+                    <Cell fill="#D7E4DF" />
+                  </Pie>
+                  <Tooltip formatter={formatPercentTooltip} />
+                  <text x="50%" y="47%" textAnchor="middle" dominantBaseline="middle" className="fill-foreground text-4xl font-semibold">
+                    {Math.round(scan.confidence * 100)}%
+                  </text>
+                  <text x="50%" y="58%" textAnchor="middle" dominantBaseline="middle" className="fill-muted-foreground text-sm">
+                    confidence
+                  </text>
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="rounded-2xl border border-border/60 bg-card/70 p-4 text-sm text-muted-foreground">
+              {age !== null ? `Patient age context: approximately ${age} years old. ` : ""}
+              Higher confidence means the uploaded image strongly matches the learned feature pattern for this predicted class.
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-6">
+        <Card className="border-border/70 shadow-sm">
+          <CardHeader>
+            <CardTitle>Segmentation confidence diagram</CardTitle>
+            <CardDescription>Detected findings and their estimated confidence on the current image.</CardDescription>
+          </CardHeader>
+          <CardContent className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={segmentationData} layout="vertical" margin={{ left: 18, right: 12 }}>
+                <CartesianGrid horizontal={false} strokeDasharray="3 3" />
+                <XAxis type="number" domain={[0, 100]} tickFormatter={(value) => `${value}%`} />
+                <YAxis type="category" dataKey="label" width={120} tickLine={false} axisLine={false} />
+                <Tooltip formatter={formatPercentTooltip} />
+                <Bar dataKey="confidence" fill="#0F6E56" radius={[0, 8, 8, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/70 shadow-sm">
+          <CardHeader>
+            <CardTitle>Explainability attention map</CardTitle>
+            <CardDescription>Attention strength by clinical region used in the final decision.</CardDescription>
+          </CardHeader>
+          <CardContent className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={xaiData}>
+                <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                <XAxis dataKey="region" tickLine={false} axisLine={false} />
+                <YAxis tickFormatter={(value) => `${value}%`} domain={[0, 100]} />
+                <Tooltip formatter={formatPercentTooltip} />
+                <Bar dataKey="attention" fill="#1D9E75" radius={[8, 8, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="border-border/70 shadow-sm xl:col-span-2">
+        <CardHeader>
+          <CardTitle>Comorbidity risk profile</CardTitle>
+          <CardDescription>Risk bands are visualized to support downstream triage and referral planning.</CardDescription>
+        </CardHeader>
+        <CardContent className="h-80">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={comorbidityData} layout="vertical" margin={{ left: 18, right: 18 }}>
+              <CartesianGrid horizontal={false} strokeDasharray="3 3" />
+              <XAxis
+                type="number"
+                domain={[0, 3]}
+                ticks={[1, 2, 3]}
+                tickFormatter={(value) => (value === 1 ? "Low" : value === 2 ? "Medium" : "High")}
+              />
+              <YAxis type="category" dataKey="condition" width={170} tickLine={false} axisLine={false} />
+              <Tooltip formatter={formatRiskTooltip} />
+              <Bar dataKey="risk" radius={[0, 8, 8, 0]}>
+                {comorbidityData.map((entry) => (
+                  <Cell key={entry.condition} fill={entry.color} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};

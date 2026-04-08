@@ -1,0 +1,170 @@
+import { inferenceUrl } from "@/shared/lib/supabase";
+import type {
+  CareAction,
+  ChildSex,
+  Classification,
+  ComorbidityFlag,
+  InferenceResponse,
+  SegmentationFinding,
+  Severity,
+  SurgicalWindow,
+  Variant,
+  XaiRegion,
+} from "@/shared/lib/types";
+
+const normalizeUnitFloat = (value: unknown, fallback = 0) => {
+  const numeric = typeof value === "number" ? value : Number(value);
+  if (Number.isNaN(numeric)) return fallback;
+  return Math.min(Math.max(numeric, 0), 1);
+};
+
+const normalizeClassification = (value: unknown): Classification =>
+  value === "positive" || value === "negative" || value === "inconclusive" ? value : "inconclusive";
+
+const normalizeSeverity = (value: unknown): Severity =>
+  value === "mild" || value === "moderate" || value === "severe" ? value : "moderate";
+
+const normalizeVariant = (value: unknown): Variant =>
+  value === "unilateral_left" || value === "unilateral_right" || value === "bilateral" ? value : "bilateral";
+
+const normalizeXai = (value: unknown): XaiRegion[] => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => {
+      if (!entry || typeof entry !== "object") return null;
+      const region = String((entry as { region?: unknown }).region ?? "").trim();
+      if (!region) return null;
+      return {
+        region,
+        attention: normalizeUnitFloat((entry as { attention?: unknown }).attention, 0),
+      };
+    })
+    .filter((entry): entry is XaiRegion => Boolean(entry));
+};
+
+const normalizeSegmentation = (value: unknown): SegmentationFinding[] => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => {
+      if (!entry || typeof entry !== "object") return null;
+      const label = String((entry as { label?: unknown }).label ?? "").trim();
+      if (!label) return null;
+      return {
+        label,
+        side: String((entry as { side?: unknown }).side ?? "na"),
+        confidence: normalizeUnitFloat((entry as { confidence?: unknown }).confidence, 0),
+      };
+    })
+    .filter((entry): entry is SegmentationFinding => Boolean(entry));
+};
+
+const normalizeComorbidities = (value: unknown): ComorbidityFlag[] => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => {
+      if (!entry || typeof entry !== "object") return null;
+      const condition = String((entry as { condition?: unknown }).condition ?? "").trim();
+      const risk = (entry as { risk?: unknown }).risk;
+      if (!condition || (risk !== "low" && risk !== "medium" && risk !== "high")) return null;
+      return { condition, risk };
+    })
+    .filter((entry): entry is ComorbidityFlag => Boolean(entry));
+};
+
+const normalizeSurgicalWindows = (value: unknown): SurgicalWindow[] => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => {
+      if (!entry || typeof entry !== "object") return null;
+      const procedure = String((entry as { procedure?: unknown }).procedure ?? "").trim();
+      const start = Number((entry as { optimal_age_start?: unknown }).optimal_age_start);
+      const end = Number((entry as { optimal_age_end?: unknown }).optimal_age_end);
+      const status = (entry as { status?: unknown }).status;
+      if (!procedure || Number.isNaN(start) || Number.isNaN(end)) return null;
+      if (status !== "urgent" && status !== "upcoming" && status !== "future" && status !== "current") return null;
+      return {
+        procedure,
+        optimal_age_start: start,
+        optimal_age_end: end,
+        status,
+      };
+    })
+    .filter((entry): entry is SurgicalWindow => Boolean(entry));
+};
+
+const normalizeCarePathway = (value: unknown): CareAction[] => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => {
+      if (!entry || typeof entry !== "object") return null;
+      const action = String((entry as { action?: unknown }).action ?? "").trim();
+      const priority = (entry as { priority?: unknown }).priority;
+      if (!action || !["low", "medium", "high", "urgent"].includes(String(priority))) return null;
+      return { action, priority: priority as CareAction["priority"] };
+    })
+    .filter((entry): entry is CareAction => Boolean(entry));
+};
+
+const toErrorMessage = async (response: Response) => {
+  try {
+    const data = await response.json();
+    if (typeof data?.detail === "string") return data.detail;
+    return JSON.stringify(data);
+  } catch {
+    return response.statusText || "Inference service error";
+  }
+};
+
+export const requestInference = async (image: File, patientAge: number, patientSex: ChildSex): Promise<InferenceResponse> => {
+  const formData = new FormData();
+  formData.append("image", image);
+  formData.append("patient_age", String(patientAge));
+  formData.append("patient_sex", patientSex);
+
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 45000);
+
+  try {
+    const response = await fetch(inferenceUrl, {
+      method: "POST",
+      body: formData,
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      throw new Error(await toErrorMessage(response));
+    }
+
+    const data = (await response.json()) as Record<string, unknown>;
+    const normalized: InferenceResponse = {
+      classification: normalizeClassification(data.classification),
+      confidence: normalizeUnitFloat(data.confidence, 0),
+      severity: normalizeSeverity(data.severity),
+      variant: normalizeVariant(data.variant),
+      xai_regions: normalizeXai(data.xai_regions),
+      segmentation: normalizeSegmentation(data.segmentation),
+      comorbidity_flags: normalizeComorbidities(data.comorbidity_flags),
+      surgical_windows: normalizeSurgicalWindows(data.surgical_windows),
+      care_pathway: normalizeCarePathway(data.care_pathway),
+    };
+
+    if (!normalized.xai_regions.length || !normalized.segmentation.length || !normalized.care_pathway.length) {
+      throw new Error("Inference response was incomplete. The model service returned malformed clinical fields.");
+    }
+
+    return normalized;
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error("Inference request timed out. Check that the local model service is running.");
+    }
+    throw error instanceof Error ? error : new Error("Unable to complete model inference.");
+  } finally {
+    window.clearTimeout(timeout);
+  }
+};
+
+export const classificationLabel = (classification: Classification) => ({
+  positive: "Positive",
+  negative: "Negative",
+  inconclusive: "Inconclusive",
+}[classification]);

@@ -1,0 +1,249 @@
+import { useEffect, useMemo, useState } from "react";
+import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { CircleMarker, MapContainer, TileLayer, Tooltip as MapTooltip } from "react-leaflet";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui/card";
+import { Input } from "@/shared/ui/input";
+import { MetricCard } from "@/shared/components/MetricCard";
+import { PageHeader } from "@/shared/components/PageHeader";
+import { PageTransition } from "@/shared/components/PageTransition";
+import { useChildren } from "@/shared/hooks/useChildren";
+import { calculateAge, listDoctors, listReferrals, listScans } from "@/shared/lib/data";
+import { districtPoints } from "@/shared/lib/mock-data";
+import { useAuthStore } from "@/features/auth/store/authStore";
+import type { Profile, ReferralRecord, ScanRecord } from "@/shared/lib/types";
+
+const monthKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+
+export default function Analytics() {
+  const { profile } = useAuthStore();
+  const { children, loading: childrenLoading } = useChildren(profile);
+  const [scans, setScans] = useState<ScanRecord[]>([]);
+  const [referrals, setReferrals] = useState<ReferralRecord[]>([]);
+  const [doctors, setDoctors] = useState<Profile[]>([]);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let ignore = false;
+    const run = async () => {
+      if (!profile) return;
+      setLoading(true);
+      const [scanRows, referralRows, doctorRows] = await Promise.all([
+        listScans(profile),
+        listReferrals(profile),
+        listDoctors(),
+      ]);
+      if (!ignore) {
+        setScans(scanRows);
+        setReferrals(referralRows);
+        setDoctors(doctorRows);
+        setLoading(false);
+      }
+    };
+    void run();
+    return () => {
+      ignore = true;
+    };
+  }, [profile]);
+
+  const filteredScans = useMemo(() => {
+    return scans.filter((scan) => {
+      const date = new Date(scan.created_at);
+      const matchesFrom = dateFrom ? date >= new Date(dateFrom) : true;
+      const matchesTo = dateTo ? date <= new Date(`${dateTo}T23:59:59`) : true;
+      return matchesFrom && matchesTo;
+    });
+  }, [dateFrom, dateTo, scans]);
+
+  const totalScans = filteredScans.length;
+  const positiveDetections = filteredScans.filter((scan) => scan.classification === "positive").length;
+  const avgAge = filteredScans.length
+    ? (filteredScans.reduce((sum, scan) => {
+        const child = children.find((entry) => entry.id === scan.child_id);
+        return sum + (child ? calculateAge(child.dob) : 0);
+      }, 0) / filteredScans.length).toFixed(1)
+    : "0.0";
+  const referralCompletionRate = referrals.length
+    ? `${Math.round((referrals.filter((referral) => referral.status === "completed").length / referrals.length) * 100)}%`
+    : "0%";
+
+  const severityDistribution = ["mild", "moderate", "severe"].map((severity) => ({
+    severity,
+    count: filteredScans.filter((scan) => scan.severity === severity).length,
+  }));
+
+  const monthlyMap = new Map<string, number>();
+  for (let offset = 5; offset >= 0; offset -= 1) {
+    const date = new Date();
+    date.setMonth(date.getMonth() - offset);
+    monthlyMap.set(monthKey(date), 0);
+  }
+  filteredScans.forEach((scan) => {
+    const key = monthKey(new Date(scan.created_at));
+    if (monthlyMap.has(key)) {
+      monthlyMap.set(key, (monthlyMap.get(key) || 0) + 1);
+    }
+  });
+  const scansOverTime = Array.from(monthlyMap.entries()).map(([month, count]) => ({ month, count }));
+
+  const ageDistribution = ["0-2", "3-5", "6-9", "10-13", "14+"];
+  const ageHistogram = ageDistribution.map((bucket) => {
+    const count = filteredScans.filter((scan) => {
+      const child = children.find((entry) => entry.id === scan.child_id);
+      if (!child) return false;
+      const age = calculateAge(child.dob);
+      if (bucket === "0-2") return age <= 2;
+      if (bucket === "3-5") return age >= 3 && age <= 5;
+      if (bucket === "6-9") return age >= 6 && age <= 9;
+      if (bucket === "10-13") return age >= 10 && age <= 13;
+      return age >= 14;
+    }).length;
+    return { bucket, count };
+  });
+
+  const districtCounts = districtPoints.map((point) => {
+    const cases = filteredScans.filter((scan) => {
+      const child = children.find((entry) => entry.id === scan.child_id);
+      const doctor = doctors.find((entry) => entry.id === child?.assigned_doctor);
+      const district = doctor?.district || profile?.district;
+      return district === point.name;
+    }).length;
+    return { ...point, cases };
+  }).filter((entry) => entry.cases > 0);
+
+  const topDistricts = districtCounts.slice().sort((a, b) => b.cases - a.cases).slice(0, 5);
+
+  if (!profile || loading || childrenLoading) {
+    return <div className="space-y-4"><div className="h-12 rounded-2xl bg-muted animate-pulse" /><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-32 rounded-2xl bg-muted animate-pulse" />)}</div></div>;
+  }
+
+  return (
+    <PageTransition className="space-y-6">
+      <PageHeader title="Analytics" description="Track detection patterns, referral performance, and district-level concentration of cases across the visible dataset." />
+
+      <Card className="border-border/70 shadow-sm">
+        <CardHeader>
+          <CardTitle>Date range</CardTitle>
+          <CardDescription>Apply the filter to all metric cards and charts.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">From</label>
+            <Input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">To</label>
+            <Input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} />
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <MetricCard title="Total scans" value={String(totalScans)} hint="Within selected date range" />
+        <MetricCard title="Positive detections" value={String(positiveDetections)} hint="AI flagged as positive" />
+        <MetricCard title="Avg age at detection" value={avgAge} hint="Years" />
+        <MetricCard title="Referral completion" value={referralCompletionRate} hint="Completed referrals out of total" />
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-2">
+        <Card className="border-border/70 shadow-sm">
+          <CardHeader>
+            <CardTitle>Severity distribution</CardTitle>
+            <CardDescription>Count of scans by severity band.</CardDescription>
+          </CardHeader>
+          <CardContent className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={severityDistribution}>
+                <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                <XAxis dataKey="severity" />
+                <YAxis allowDecimals={false} />
+                <Tooltip />
+                <Bar dataKey="count" fill="var(--primary)" radius={[10, 10, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/70 shadow-sm">
+          <CardHeader>
+            <CardTitle>Scans over time</CardTitle>
+            <CardDescription>Monthly scan volume across the last six months.</CardDescription>
+          </CardHeader>
+          <CardContent className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={scansOverTime}>
+                <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis allowDecimals={false} />
+                <Tooltip />
+                <Line dataKey="count" stroke="var(--primary)" strokeWidth={3} />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+        <Card className="border-border/70 shadow-sm">
+          <CardHeader>
+            <CardTitle>District heatmap</CardTitle>
+            <CardDescription>Circle markers sized by case count using available doctor-linked district metadata.</CardDescription>
+          </CardHeader>
+          <CardContent className="h-[430px] overflow-hidden rounded-3xl">
+            <MapContainer center={[23.685, 90.3563]} zoom={7} scrollWheelZoom className="h-full w-full rounded-3xl">
+              <TileLayer attribution='&copy; OpenStreetMap contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+              {districtCounts.map((district) => (
+                <CircleMarker
+                  key={district.name}
+                  center={[district.lat, district.lng]}
+                  radius={6 + district.cases * 2}
+                  pathOptions={{ color: "#0F6E56", fillColor: "#0F6E56", fillOpacity: 0.55 }}
+                >
+                  <MapTooltip>
+                    {district.name}: {district.cases} cases
+                  </MapTooltip>
+                </CircleMarker>
+              ))}
+            </MapContainer>
+          </CardContent>
+        </Card>
+
+        <div className="space-y-6">
+          <Card className="border-border/70 shadow-sm">
+            <CardHeader>
+              <CardTitle>Top districts</CardTitle>
+              <CardDescription>Highest visible case counts in the selected range.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {topDistricts.map((district) => (
+                <div key={district.name} className="space-y-2">
+                  <div className="flex items-center justify-between text-sm"><span>{district.name}</span><span>{district.cases}</span></div>
+                  <div className="h-2 rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(district.cases * 15, 100)}%` }} /></div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/70 shadow-sm">
+            <CardHeader>
+              <CardTitle>Age distribution</CardTitle>
+              <CardDescription>Histogram of patient age at scan time.</CardDescription>
+            </CardHeader>
+            <CardContent className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={ageHistogram}>
+                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                  <XAxis dataKey="bucket" />
+                  <YAxis allowDecimals={false} />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="#1D9E75" radius={[10, 10, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </PageTransition>
+  );
+}
