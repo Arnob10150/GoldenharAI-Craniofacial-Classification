@@ -3,6 +3,7 @@ import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { FilePlus2, LoaderCircle, SendHorizontal } from "lucide-react";
 import { Button } from "@/shared/ui/button";
@@ -37,11 +38,12 @@ import {
   listDoctors,
   MAX_CHILD_AGE,
 } from "@/shared/lib/data";
+import { translateSexLabel, translateSpecialtyLabel, translateStatusLabel } from "@/shared/lib/i18n";
 import { downloadClinicalReport, downloadPatientReport } from "@/shared/lib/pdf";
 import { useAuthStore } from "@/features/auth/store/authStore";
 import type { Child, ChildSex, Profile, ReferralRecord, ScanRecord, SegmentationFinding, Specialty } from "@/shared/lib/types";
 
-const scanSchema = z.object({
+const createScanSchema = (isBangla: boolean) => z.object({
   patientMode: z.enum(["saved", "new"]),
   childId: z.string().optional(),
   name: z.string().optional(),
@@ -49,36 +51,51 @@ const scanSchema = z.object({
   sex: z.enum(["male", "female"]).optional(),
 }).superRefine((value, ctx) => {
   if (value.patientMode === "saved" && !value.childId) {
-    ctx.addIssue({ code: "custom", path: ["childId"], message: "Select a patient" });
+    ctx.addIssue({ code: "custom", path: ["childId"], message: isBangla ? "রোগী নির্বাচন করুন" : "Select a patient" });
   }
   if (value.patientMode === "new") {
-    if (!value.name) ctx.addIssue({ code: "custom", path: ["name"], message: "Enter patient name" });
-    if (!value.dob) ctx.addIssue({ code: "custom", path: ["dob"], message: "Select date of birth" });
-    else if (!isValidPediatricDob(value.dob)) ctx.addIssue({ code: "custom", path: ["dob"], message: `Patient age must stay within 0-${MAX_CHILD_AGE} years.` });
-    if (!value.sex) ctx.addIssue({ code: "custom", path: ["sex"], message: "Select sex" });
+    if (!value.name) ctx.addIssue({ code: "custom", path: ["name"], message: isBangla ? "রোগীর নাম লিখুন" : "Enter patient name" });
+    if (!value.dob) ctx.addIssue({ code: "custom", path: ["dob"], message: isBangla ? "জন্মতারিখ নির্বাচন করুন" : "Select date of birth" });
+    else if (!isValidPediatricDob(value.dob)) ctx.addIssue({ code: "custom", path: ["dob"], message: isBangla ? `রোগীর বয়স ০-${MAX_CHILD_AGE} বছরের মধ্যে থাকতে হবে।` : `Patient age must stay within 0-${MAX_CHILD_AGE} years.` });
+    if (!value.sex) ctx.addIssue({ code: "custom", path: ["sex"], message: isBangla ? "লিঙ্গ নির্বাচন করুন" : "Select sex" });
   }
 });
 
-const referralSchema = z.object({
+const createReferralSchema = (isBangla: boolean) => z.object({
   specialty: z.enum(["ENT", "Ophthalmology", "Cardiology", "Genetics", "Neurology", "Craniofacial", "Audiology"]),
   urgency: z.enum(["routine", "urgent", "emergency"]),
-  toDoctor: z.string().min(1, "Select receiving doctor"),
-  notes: z.string().min(10, "Provide enough context for the referral letter"),
+  toDoctor: z.string().min(1, isBangla ? "গ্রহণকারী ডাক্তার নির্বাচন করুন" : "Select receiving doctor"),
+  notes: z.string().min(10, isBangla ? "রেফারাল লেটারের জন্য পর্যাপ্ত তথ্য দিন" : "Provide enough context for the referral letter"),
   appointmentDate: z.string().optional(),
 });
 
-type ScanForm = z.infer<typeof scanSchema>;
-type ReferralForm = z.infer<typeof referralSchema>;
+type ScanForm = z.infer<ReturnType<typeof createScanSchema>>;
+type ReferralForm = z.infer<ReturnType<typeof createReferralSchema>>;
 
-const analysisSteps = [
-  "Upload and storage",
-  "Clinical ROI processing",
-  "Model inference + explainability",
-  "Care pathway preparation",
-];
+const analysisSteps = {
+  en: [
+    "Upload and storage",
+    "Clinical ROI processing",
+    "Model inference + explainability",
+    "Care pathway preparation",
+  ],
+  bn: [
+    "আপলোড ও সংরক্ষণ",
+    "ক্লিনিক্যাল ROI প্রসেসিং",
+    "মডেল ইনফারেন্স + ব্যাখ্যাযোগ্যতা",
+    "কেয়ার পাথওয়ে প্রস্তুতি",
+  ],
+} as const;
+
+const specialties: Specialty[] = ["ENT", "Ophthalmology", "Cardiology", "Genetics", "Neurology", "Craniofacial", "Audiology"];
 
 export default function DoctorNewScan() {
   const navigate = useNavigate();
+  const { i18n } = useTranslation();
+  const isBangla = i18n.language === "bn";
+  const scanSchema = useMemo(() => createScanSchema(isBangla), [isBangla]);
+  const referralSchema = useMemo(() => createReferralSchema(isBangla), [isBangla]);
+  const localizedSteps = isBangla ? analysisSteps.bn : analysisSteps.en;
   const { profile } = useAuthStore();
   const { children, loading, setChildren } = useChildren(profile);
   const [file, setFile] = useState<File | null>(null);
@@ -141,10 +158,10 @@ export default function DoctorNewScan() {
   useEffect(() => {
     if (!analyzing) return;
     const timer = window.setInterval(() => {
-      setAnalysisStep((current) => (current + 1) % analysisSteps.length);
+      setAnalysisStep((current) => (current + 1) % localizedSteps.length);
     }, 800);
     return () => clearInterval(timer);
-  }, [analyzing]);
+  }, [analyzing, localizedSteps.length]);
 
   const previewUrl = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
 
@@ -156,7 +173,7 @@ export default function DoctorNewScan() {
 
   const submitScan = scanForm.handleSubmit(async (values) => {
     if (!profile || !file) {
-      toast.error("Upload a patient image before running analysis.");
+      toast.error(isBangla ? "বিশ্লেষণ চালানোর আগে রোগীর ছবি আপলোড করুন।" : "Upload a patient image before running analysis.");
       return;
     }
 
@@ -198,13 +215,13 @@ export default function DoctorNewScan() {
           appointmentDate: "",
         });
       }
-      toast.success("Clinical result ready. Opening the full result board.");
+      toast.success(isBangla ? "ক্লিনিক্যাল ফলাফল প্রস্তুত। পূর্ণ রেজাল্ট বোর্ড খোলা হচ্ছে।" : "Clinical result ready. Opening the full result board.");
       navigate(`/doctor/scans/${scan.id}`);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to analyze patient image.");
+      toast.error(error instanceof Error ? error.message : (isBangla ? "রোগীর ছবি বিশ্লেষণ করা যায়নি।" : "Unable to analyze patient image."));
     } finally {
       setAnalyzing(false);
-      setAnalysisStep(analysisSteps.length - 1);
+      setAnalysisStep(localizedSteps.length - 1);
     }
   });
 
@@ -222,39 +239,47 @@ export default function DoctorNewScan() {
         appointmentDate: values.appointmentDate || null,
       });
       setCurrentReferral(referral);
-      toast.success("Referral sent successfully.");
+      toast.success(isBangla ? "রেফারাল সফলভাবে পাঠানো হয়েছে।" : "Referral sent successfully.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to send referral.");
+      toast.error(error instanceof Error ? error.message : (isBangla ? "রেফারাল পাঠানো যায়নি।" : "Unable to send referral."));
     }
   });
 
   if (!profile || loading) {
-    return <LoadingPanel title="Loading clinical scan workspace" description="Preparing patients, referral networks, and scan tools." />;
+    return (
+      <LoadingPanel
+        title={isBangla ? "ক্লিনিক্যাল স্ক্যান ওয়ার্কস্পেস লোড হচ্ছে" : "Loading clinical scan workspace"}
+        description={isBangla ? "রোগী, রেফারাল নেটওয়ার্ক এবং স্ক্যান টুল প্রস্তুত করা হচ্ছে।" : "Preparing patients, referral networks, and scan tools."}
+      />
+    );
   }
 
   return (
     <PageTransition className="space-y-6">
-      <PageHeader title={profile.role === "chw" ? "Submit scan" : "New clinical scan"} description="Run AI-supported analysis, review segmentation and risks, then send the patient into the right specialty workflow." />
+      <PageHeader
+        title={profile.role === "chw" ? (isBangla ? "স্ক্যান জমা দিন" : "Submit scan") : (isBangla ? "নতুন ক্লিনিক্যাল স্ক্যান" : "New clinical scan")}
+        description={isBangla ? "এআই-সহায়ক বিশ্লেষণ চালান, সেগমেন্টেশন ও ঝুঁকি পর্যালোচনা করুন, তারপর রোগীকে সঠিক বিশেষজ্ঞ ওয়ার্কফ্লোতে পাঠান।" : "Run AI-supported analysis, review segmentation and risks, then send the patient into the right specialty workflow."}
+      />
 
       <div className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
         <Card className="border-border/70 shadow-sm">
           <CardHeader>
-            <CardTitle>Patient + image input</CardTitle>
-            <CardDescription>Select an existing patient or create a new one before running analysis.</CardDescription>
+            <CardTitle>{isBangla ? "রোগী + ছবি ইনপুট" : "Patient + image input"}</CardTitle>
+            <CardDescription>{isBangla ? "বিশ্লেষণ চালানোর আগে বিদ্যমান রোগী নির্বাচন করুন অথবা নতুন রোগী তৈরি করুন।" : "Select an existing patient or create a new one before running analysis."}</CardDescription>
           </CardHeader>
           <CardContent>
             <form className="space-y-5" onSubmit={submitScan}>
               <div className="space-y-2">
-                <Label>Patient source</Label>
+                <Label>{isBangla ? "রোগীর উৎস" : "Patient source"}</Label>
                 <Controller
                   control={scanForm.control}
                   name="patientMode"
                   render={({ field }) => (
                     <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger><SelectValue placeholder="Select patient mode" /></SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder={isBangla ? "রোগীর ধরন নির্বাচন করুন" : "Select patient mode"} /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="saved">Select from patient list</SelectItem>
-                        <SelectItem value="new">Create new patient</SelectItem>
+                        <SelectItem value="saved">{isBangla ? "রোগীর তালিকা থেকে নির্বাচন করুন" : "Select from patient list"}</SelectItem>
+                        <SelectItem value="new">{isBangla ? "নতুন রোগী তৈরি করুন" : "Create new patient"}</SelectItem>
                       </SelectContent>
                     </Select>
                   )}
@@ -263,15 +288,15 @@ export default function DoctorNewScan() {
 
               {patientMode === "saved" ? (
                 <div className="space-y-2">
-                  <Label>Patient</Label>
+                  <Label>{isBangla ? "রোগী" : "Patient"}</Label>
                   <Controller
                     control={scanForm.control}
                     name="childId"
                     render={({ field }) => (
                       <Select value={field.value} onValueChange={field.onChange}>
-                        <SelectTrigger><SelectValue placeholder="Select patient" /></SelectTrigger>
+                        <SelectTrigger><SelectValue placeholder={isBangla ? "রোগী নির্বাচন করুন" : "Select patient"} /></SelectTrigger>
                         <SelectContent>
-                          {children.map((child) => <SelectItem key={child.id} value={child.id}>{child.name} · {calculateAge(child.dob)} years</SelectItem>)}
+                          {children.map((child) => <SelectItem key={child.id} value={child.id}>{child.name} · {calculateAge(child.dob)} {isBangla ? "বছর" : "years"}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     )}
@@ -280,25 +305,25 @@ export default function DoctorNewScan() {
               ) : (
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="patient-name">Patient name</Label>
-                    <Input id="patient-name" {...scanForm.register("name")} />
+                    <Label htmlFor="patient-name">{isBangla ? "রোগীর নাম" : "Patient name"}</Label>
+                    <Input id="patient-name" placeholder={isBangla ? "রোগীর নাম লিখুন" : "Patient name"} {...scanForm.register("name")} />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="patient-dob">Date of birth</Label>
+                    <Label htmlFor="patient-dob">{isBangla ? "জন্মতারিখ" : "Date of birth"}</Label>
                     <Input id="patient-dob" type="date" min={minDob} max={maxDob} {...scanForm.register("dob")} />
                     {scanForm.formState.errors.dob ? <p className="text-sm text-destructive">{scanForm.formState.errors.dob.message}</p> : null}
                   </div>
                   <div className="space-y-2">
-                    <Label>Sex</Label>
+                    <Label>{isBangla ? "লিঙ্গ" : "Sex"}</Label>
                     <Controller
                       control={scanForm.control}
                       name="sex"
                       render={({ field }) => (
                         <Select value={field.value} onValueChange={field.onChange}>
-                          <SelectTrigger><SelectValue placeholder="Select sex" /></SelectTrigger>
+                          <SelectTrigger><SelectValue placeholder={isBangla ? "লিঙ্গ নির্বাচন করুন" : "Select sex"} /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="male">Male</SelectItem>
-                            <SelectItem value="female">Female</SelectItem>
+                            <SelectItem value="male">{translateSexLabel("male")}</SelectItem>
+                            <SelectItem value="female">{translateSexLabel("female")}</SelectItem>
                           </SelectContent>
                         </Select>
                       )}
@@ -308,13 +333,13 @@ export default function DoctorNewScan() {
               )}
 
               <div className="space-y-2">
-                <Label>Clinical image</Label>
+                <Label>{isBangla ? "ক্লিনিক্যাল ছবি" : "Clinical image"}</Label>
                 <UploadDropzone value={file} onChange={setFile} />
               </div>
 
               <Button type="submit" className="w-full gap-2" size="lg" disabled={analyzing || !file}>
                 <FilePlus2 className="size-4" />
-                {analyzing ? "AI analyzing..." : "Analyze image"}
+                {analyzing ? (isBangla ? "এআই বিশ্লেষণ করছে..." : "AI analyzing...") : (isBangla ? "ছবি বিশ্লেষণ করুন" : "Analyze image")}
               </Button>
             </form>
           </CardContent>
@@ -323,14 +348,20 @@ export default function DoctorNewScan() {
         <div className="space-y-6">
           <Card className="border-border/70 shadow-sm">
             <CardHeader>
-              <CardTitle>Preview & progress</CardTitle>
-              <CardDescription>The inference workflow now uses the real MorphoFusion model service and stays compatible with the Railway deployment contract.</CardDescription>
+              <CardTitle>{isBangla ? "প্রিভিউ ও অগ্রগতি" : "Preview & progress"}</CardTitle>
+              <CardDescription>{isBangla ? "ইনফারেন্স ওয়ার্কফ্লো বাস্তব মডেল সার্ভিস ব্যবহার করে এবং ডিপ্লয়মেন্ট চুক্তির সাথে সামঞ্জস্য রেখে চলে।" : "The inference workflow now uses the real MorphoFusion model service and stays compatible with the Railway deployment contract."}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
-              {previewUrl ? <img src={previewUrl} alt="Clinical preview" className="h-72 w-full rounded-3xl object-cover" /> : <div className="flex h-72 items-center justify-center rounded-3xl border border-dashed border-border/70 bg-muted/20 text-sm text-muted-foreground">Upload an image to see the preview.</div>}
-              <Progress value={analyzing ? ((analysisStep + 1) / analysisSteps.length) * 100 : activeScan ? 100 : 0} />
+              {previewUrl ? (
+                <img src={previewUrl} alt={isBangla ? "ক্লিনিক্যাল প্রিভিউ" : "Clinical preview"} className="h-72 w-full rounded-3xl object-cover" />
+              ) : (
+                <div className="flex h-72 items-center justify-center rounded-3xl border border-dashed border-border/70 bg-muted/20 text-sm text-muted-foreground">
+                  {isBangla ? "প্রিভিউ দেখতে একটি ছবি আপলোড করুন।" : "Upload an image to see the preview."}
+                </div>
+              )}
+              <Progress value={analyzing ? ((analysisStep + 1) / localizedSteps.length) * 100 : activeScan ? 100 : 0} />
               <div className="space-y-3 rounded-3xl bg-muted/35 p-5 text-sm">
-                {analysisSteps.map((step, index) => (
+                {localizedSteps.map((step, index) => (
                   <div key={step} className="flex items-center gap-3">
                     <LoaderCircle className={`size-4 ${analyzing && analysisStep === index ? "animate-spin text-primary" : index <= analysisStep && activeScan ? "text-primary" : "text-muted-foreground"}`} />
                     <span className={index <= analysisStep && (analyzing || activeScan) ? "font-medium text-foreground" : "text-muted-foreground"}>{step}</span>
@@ -344,17 +375,17 @@ export default function DoctorNewScan() {
             <>
               <Card className="border-border/70 shadow-sm">
                 <CardHeader>
-                  <CardTitle>Segmentation findings</CardTitle>
-                  <CardDescription>Local findings produced by the inference API.</CardDescription>
+                  <CardTitle>{isBangla ? "সেগমেন্টেশন ফলাফল" : "Segmentation findings"}</CardTitle>
+                  <CardDescription>{isBangla ? "ইনফারেন্স API দ্বারা তৈরি স্থানীয় ফাইন্ডিংস।" : "Local findings produced by the inference API."}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Label</TableHead>
-                          <TableHead>Side</TableHead>
-                          <TableHead>Confidence</TableHead>
+                          <TableHead>{isBangla ? "লেবেল" : "Label"}</TableHead>
+                          <TableHead>{isBangla ? "পাশ" : "Side"}</TableHead>
+                          <TableHead>{isBangla ? "কনফিডেন্স" : "Confidence"}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -380,21 +411,21 @@ export default function DoctorNewScan() {
                 referralComposer={
                   <form className="space-y-4" onSubmit={submitReferral}>
                     <div>
-                      <div className="mb-2 text-lg font-semibold">Referral sender</div>
-                      <p className="text-sm text-muted-foreground">Select specialty, urgency, receiving doctor, and adjust the auto-drafted letter before sending.</p>
+                      <div className="mb-2 text-lg font-semibold">{isBangla ? "রেফারাল প্রেরণ" : "Referral sender"}</div>
+                      <p className="text-sm text-muted-foreground">{isBangla ? "বিশেষত্ব, জরুরিতা, গ্রহণকারী ডাক্তার নির্বাচন করুন এবং পাঠানোর আগে অটো-ড্রাফট করা চিঠি ঠিক করুন।" : "Select specialty, urgency, receiving doctor, and adjust the auto-drafted letter before sending."}</p>
                     </div>
                     <div className="grid gap-4 md:grid-cols-2">
                       <div className="space-y-2">
-                        <Label>Specialty</Label>
+                        <Label>{isBangla ? "বিশেষত্ব" : "Specialty"}</Label>
                         <Controller
                           control={referralForm.control}
                           name="specialty"
                           render={({ field }) => (
                             <Select value={field.value} onValueChange={field.onChange}>
-                              <SelectTrigger><SelectValue placeholder="Select specialty" /></SelectTrigger>
+                              <SelectTrigger><SelectValue placeholder={isBangla ? "বিশেষত্ব নির্বাচন করুন" : "Select specialty"} /></SelectTrigger>
                               <SelectContent>
-                                {["ENT", "Ophthalmology", "Cardiology", "Genetics", "Neurology", "Craniofacial", "Audiology"].map((specialty) => (
-                                  <SelectItem key={specialty} value={specialty}>{specialty}</SelectItem>
+                                {specialties.map((specialty) => (
+                                  <SelectItem key={specialty} value={specialty}>{translateSpecialtyLabel(specialty)}</SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>
@@ -402,17 +433,17 @@ export default function DoctorNewScan() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Urgency</Label>
+                        <Label>{isBangla ? "জরুরিতা" : "Urgency"}</Label>
                         <Controller
                           control={referralForm.control}
                           name="urgency"
                           render={({ field }) => (
                             <Select value={field.value} onValueChange={field.onChange}>
-                              <SelectTrigger><SelectValue placeholder="Select urgency" /></SelectTrigger>
+                              <SelectTrigger><SelectValue placeholder={isBangla ? "জরুরিতা নির্বাচন করুন" : "Select urgency"} /></SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="routine">Routine</SelectItem>
-                                <SelectItem value="urgent">Urgent</SelectItem>
-                                <SelectItem value="emergency">Emergency</SelectItem>
+                                <SelectItem value="routine">{translateStatusLabel("routine")}</SelectItem>
+                                <SelectItem value="urgent">{translateStatusLabel("urgent")}</SelectItem>
+                                <SelectItem value="emergency">{translateStatusLabel("emergency")}</SelectItem>
                               </SelectContent>
                             </Select>
                           )}
@@ -420,32 +451,32 @@ export default function DoctorNewScan() {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label>Receiving doctor</Label>
+                      <Label>{isBangla ? "গ্রহণকারী ডাক্তার" : "Receiving doctor"}</Label>
                       <Controller
                         control={referralForm.control}
                         name="toDoctor"
                         render={({ field }) => (
                           <Select value={field.value} onValueChange={field.onChange}>
-                            <SelectTrigger><SelectValue placeholder="Select receiving doctor" /></SelectTrigger>
+                            <SelectTrigger><SelectValue placeholder={isBangla ? "গ্রহণকারী ডাক্তার নির্বাচন করুন" : "Select receiving doctor"} /></SelectTrigger>
                             <SelectContent>
-                              {receivingDoctors.map((doctor) => <SelectItem key={doctor.id} value={doctor.id}>{doctor.full_name} · {doctor.specialty || doctor.district}</SelectItem>)}
+                              {receivingDoctors.map((doctor) => <SelectItem key={doctor.id} value={doctor.id}>{doctor.full_name} · {doctor.specialty ? translateSpecialtyLabel(doctor.specialty) : doctor.district}</SelectItem>)}
                             </SelectContent>
                           </Select>
                         )}
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="appointmentDate">Appointment date</Label>
+                      <Label htmlFor="appointmentDate">{isBangla ? "অ্যাপয়েন্টমেন্ট তারিখ" : "Appointment date"}</Label>
                       <Input id="appointmentDate" type="date" {...referralForm.register("appointmentDate")} />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="notes">Referral letter</Label>
+                      <Label htmlFor="notes">{isBangla ? "রেফারাল চিঠি" : "Referral letter"}</Label>
                       <Textarea id="notes" rows={7} {...referralForm.register("notes")} />
                     </div>
                     <div className="flex flex-wrap gap-3">
-                      <Button type="submit" className="gap-2"><SendHorizontal className="size-4" /> Send referral</Button>
-                      <Button type="button" variant="outline" onClick={() => toast.success(`ICD-10 suggestions: ${(activeScan.icd10_codes || []).join(", ")}`)}>ICD-10 suggestions</Button>
-                      <Button type="button" variant="secondary" onClick={() => toast.success("Scan is already stored in the patient record.")}>Add to patient record</Button>
+                      <Button type="submit" className="gap-2"><SendHorizontal className="size-4" /> {isBangla ? "রেফারাল পাঠান" : "Send referral"}</Button>
+                      <Button type="button" variant="outline" onClick={() => toast.success(`${isBangla ? "ICD-10 সাজেশন" : "ICD-10 suggestions"}: ${(activeScan.icd10_codes || []).join(", ")}`)}>{isBangla ? "ICD-10 সাজেশন" : "ICD-10 suggestions"}</Button>
+                      <Button type="button" variant="secondary" onClick={() => toast.success(isBangla ? "স্ক্যান ইতিমধ্যেই রোগীর রেকর্ডে সংরক্ষিত আছে।" : "Scan is already stored in the patient record.")}>{isBangla ? "রোগীর রেকর্ডে যোগ করুন" : "Add to patient record"}</Button>
                     </div>
                   </form>
                 }

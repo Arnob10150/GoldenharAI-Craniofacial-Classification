@@ -6,6 +6,7 @@ import { Button } from "@/shared/ui/button";
 import { LanguageToggle } from "@/shared/components/LanguageToggle";
 import { ThemeToggle } from "@/shared/components/ThemeToggle";
 import { NotificationBell } from "@/shared/components/NotificationBell";
+import { translateRoleLabel } from "@/shared/lib/i18n";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,16 +42,16 @@ export const Navbar = () => {
 
   const handleLogout = async () => {
     await logout();
-    toast.success("Signed out successfully.");
+    toast.success(t("toast.signedOut"));
     navigate("/", { replace: true });
   };
 
   const navLinks = profile
     ? [
-        { label: "Home", to: "/" },
-        { label: "Dashboard", to: dashboardLink },
-        { label: profile.role === "parent" ? "Children" : "Patients", to: profileRecordsLink },
-        { label: profile.role === "parent" ? "Scan history" : "Referrals", to: careWorkflowLink },
+        { label: t("common.home"), to: "/" },
+        { label: t("common.dashboard"), to: dashboardLink },
+        { label: profile.role === "parent" ? t("common.children") : t("common.patients"), to: profileRecordsLink },
+        { label: profile.role === "parent" ? t("common.scanHistory") : t("common.referrals"), to: careWorkflowLink },
       ]
     : guestLinks.map((item) => ({ label: t(item.labelKey), to: item.to }));
 
@@ -66,9 +67,9 @@ export const Navbar = () => {
             </SheetTrigger>
             <SheetContent side="left" className="w-[300px] p-0">
               <SheetHeader className="border-b border-border/60 p-4 text-left">
-                <SheetTitle>GoldenScope AI</SheetTitle>
+                <SheetTitle>{t("common.appName")}</SheetTitle>
                 <SheetDescription>
-                  {profile ? "Access your authenticated workspace and care tools." : "Move into the parent or clinical portal."}
+                  {profile ? t("nav.authenticatedDescription") : t("nav.guestDescription")}
                 </SheetDescription>
               </SheetHeader>
               <div className="space-y-4 p-4">
@@ -77,8 +78,8 @@ export const Navbar = () => {
                     <BrainCircuit className="size-5" />
                   </span>
                   <div>
-                    <div className="font-semibold tracking-tight">GoldenScope AI</div>
-                    <div className="text-xs text-muted-foreground">Pediatric detection and care platform</div>
+                    <div className="font-semibold tracking-tight">{t("common.appName")}</div>
+                    <div className="text-xs text-muted-foreground">{t("common.tagline")}</div>
                   </div>
                 </Link>
                 <div className="grid gap-2">
@@ -96,7 +97,7 @@ export const Navbar = () => {
                 {profile ? (
                   <Button variant="destructive" className="w-full gap-2" onClick={() => void handleLogout()}>
                     <LogOut className="size-4" />
-                    Sign out
+                    {t("common.logout")}
                   </Button>
                 ) : (
                   <div className="grid gap-2">
@@ -120,9 +121,11 @@ export const Navbar = () => {
               <BrainCircuit className="size-5" />
             </span>
             <div className="min-w-0">
-              <div className="truncate font-semibold tracking-tight">GoldenScope AI</div>
+              <div className="truncate font-semibold tracking-tight">{t("common.appName")}</div>
               <div className="truncate text-xs text-muted-foreground">
-                {profile ? `${profile.role} workspace` : "Pediatric detection and care platform"}
+                {profile
+                  ? t("nav.workspace", { role: translateRoleLabel(profile.role) })
+                  : t("common.tagline")}
               </div>
             </div>
           </Link>
@@ -149,7 +152,7 @@ export const Navbar = () => {
                 onClick={() => void handleLogout()}
               >
                 <LogOut className="size-4" />
-                Sign out
+                {t("common.logout")}
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -165,18 +168,18 @@ export const Navbar = () => {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link to={dashboardLink}>Dashboard</Link>
+                    <Link to={dashboardLink}>{t("common.dashboard")}</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to={profileRecordsLink}>Profile & records</Link>
+                    <Link to={profileRecordsLink}>{t("nav.profileRecords")}</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to={careWorkflowLink}>Care workflows</Link>
+                    <Link to={careWorkflowLink}>{t("nav.careWorkflows")}</Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem className="gap-2 text-destructive focus:text-destructive" onClick={() => void handleLogout()}>
                     <LogOut className="size-4" />
-                    Sign out
+                    {t("common.logout")}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

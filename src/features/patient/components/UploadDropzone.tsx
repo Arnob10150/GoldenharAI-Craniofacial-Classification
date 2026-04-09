@@ -1,5 +1,6 @@
 import { UploadCloud, X } from "lucide-react";
 import { useDropzone } from "react-dropzone";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Button } from "@/shared/ui/button";
 import { Card, CardContent } from "@/shared/ui/card";
@@ -11,6 +12,7 @@ interface UploadDropzoneProps {
 }
 
 export const UploadDropzone = ({ value, onChange }: UploadDropzoneProps) => {
+  const { t } = useTranslation();
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: { "image/*": [] },
     multiple: false,
@@ -19,7 +21,7 @@ export const UploadDropzone = ({ value, onChange }: UploadDropzoneProps) => {
       onChange(acceptedFiles[0] ?? null);
     },
     onDropRejected: () => {
-      toast.error("Image upload failed. Use a JPG, PNG, or HEIC file under 10 MB.");
+      toast.error(t("uploadDropzone.uploadError"));
     },
   });
 
@@ -35,10 +37,10 @@ export const UploadDropzone = ({ value, onChange }: UploadDropzoneProps) => {
             <UploadCloud className="size-6" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold">Drag and drop a clinical image</h3>
-            <p className="text-sm text-muted-foreground">JPG, PNG, or HEIC. Clear views of facial, ear, ocular, dental, or vertebral findings work best.</p>
+            <h3 className="text-lg font-semibold">{t("uploadDropzone.title")}</h3>
+            <p className="text-sm text-muted-foreground">{t("uploadDropzone.description")}</p>
           </div>
-          <Button type="button" variant="outline">Choose file</Button>
+          <Button type="button" variant="outline">{t("uploadDropzone.chooseFile")}</Button>
         </div>
         {value ? (
           <div className="mt-4 flex items-center justify-between rounded-xl border border-border/60 bg-background px-4 py-3 text-sm">

@@ -1,4 +1,5 @@
 import { Badge } from "@/shared/ui/badge";
+import { translateStatusLabel } from "@/shared/lib/i18n";
 import { cn } from "@/shared/lib/utils";
 
 const toneMap = {
@@ -28,6 +29,6 @@ interface StatusBadgeProps {
 
 export const StatusBadge = ({ label, tone, className }: StatusBadgeProps) => (
   <Badge className={cn("rounded-full border-0 px-3 py-1 text-xs font-medium", toneMap[tone], className)}>
-    {label}
+    {translateStatusLabel(label)}
   </Badge>
 );

@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Toaster } from "@/shared/ui/sonner";
 import { useAuthStore } from "@/features/auth/store/authStore";
 import { subscribeToSessionChanges } from "@/shared/lib/data";
+import { getStoredLanguage, normalizeLanguage } from "@/shared/lib/i18n";
 
 const AuthBootstrapper = () => {
   const { initialize, profile, setSession } = useAuthStore();
@@ -15,10 +16,17 @@ const AuthBootstrapper = () => {
   }, [initialize]);
 
   useEffect(() => {
-    if (profile?.language_pref && i18n.language !== profile.language_pref) {
-      void i18n.changeLanguage(profile.language_pref);
+    const stored = getStoredLanguage();
+    const preferred = stored ?? (profile?.language_pref ? normalizeLanguage(profile.language_pref) : null);
+    if (preferred && i18n.language !== preferred) {
+      void i18n.changeLanguage(preferred);
     }
-  }, [i18n, profile?.language_pref, profile]);
+  }, [i18n, profile?.language_pref]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    document.documentElement.lang = normalizeLanguage(i18n.language);
+  }, [i18n.language]);
 
   useEffect(() => {
     return subscribeToSessionChanges((bundle) => {

@@ -22,10 +22,10 @@ const downloadChecklist = (isBangla: boolean) => {
   const doc = new jsPDF();
   const lines = isBangla
     ? [
-        "GoldenScope AI ????? ????????",
-        "1. ??????? ??????? ????? ???",
-        "2. ?????, ????? ?? ????? ?????? ????? ????? ???? ???",
-        "3. ?????, ???????????, ???????? ????????? ???? ????????? ?????",
+        "GoldenScope AI জরুরি চেকলিস্ট",
+        "1. সর্বশেষ স্ক্যান রিপোর্ট সঙ্গে নিয়ে যান।",
+        "2. শ্বাসকষ্ট, খাওয়ানোর সমস্যা, বা চোখ শুকিয়ে যাওয়া বাড়লে দ্রুত জরুরি সেবা নিন।",
+        "3. শ্রবণ, হৃদ্‌যন্ত্র, বা মেরুদণ্ড-সম্পর্কিত উদ্বেগ থাকলে টিমকে জানান।",
       ]
     : [
         "GoldenScope AI Emergency Checklist",
@@ -52,9 +52,9 @@ export default function Resources() {
   return (
     <PageTransition className="space-y-6">
       <PageHeader
-        title={isBangla ? "??????? ???????" : "Resource center"}
-        description={isBangla ? "?????????? ????????, ???????? ????????, ???????? ??????? ??? ????? ????????? ???????? ????????? ?????" : "Bilingual guidance on Goldenhar Syndrome, surgery timing, specialist centers, and emergency preparedness."}
-        actions={<Button className="gap-2" onClick={() => downloadChecklist(isBangla)}><Download className="size-4" /> {isBangla ? "???????? PDF" : "Checklist PDF"}</Button>}
+        title={isBangla ? "রিসোর্স সেন্টার" : "Resource center"}
+        description={isBangla ? "গোল্ডেনহার সিনড্রোম, সার্জারির সময়, বিশেষজ্ঞ কেন্দ্র এবং জরুরি প্রস্তুতি নিয়ে দ্বিভাষিক নির্দেশনা।" : "Bilingual guidance on Goldenhar Syndrome, surgery timing, specialist centers, and emergency preparedness."}
+        actions={<Button className="gap-2" onClick={() => downloadChecklist(isBangla)}><Download className="size-4" /> {isBangla ? "চেকলিস্ট PDF" : "Checklist PDF"}</Button>}
       />
 
       <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
@@ -79,16 +79,16 @@ export default function Resources() {
         <div className="space-y-6">
           <Card className="border-border/70 shadow-sm">
             <CardHeader>
-              <CardTitle>{isBangla ? "????????? ???????? ???????" : "Specialist centers in Bangladesh"}</CardTitle>
-              <CardDescription>{isBangla ? "???? ??????? ??????? ??? ???????? ??????? ??????? ??????" : "Filter by district to identify likely referral destinations."}</CardDescription>
+              <CardTitle>{isBangla ? "বাংলাদেশের বিশেষজ্ঞ কেন্দ্র" : "Specialist centers in Bangladesh"}</CardTitle>
+              <CardDescription>{isBangla ? "সম্ভাব্য রেফারাল গন্তব্য দেখতে জেলা অনুযায়ী ফিল্টার করুন।" : "Filter by district to identify likely referral destinations."}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">{isBangla ? "????" : "District"}</label>
+                <label className="text-sm font-medium">{isBangla ? "জেলা" : "District"}</label>
                 <Select value={district} onValueChange={setDistrict}>
-                  <SelectTrigger><SelectValue placeholder={isBangla ? "???? ???????? ????" : "Select district"} /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={isBangla ? "জেলা নির্বাচন করুন" : "Select district"} /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">{isBangla ? "?? ????" : "All districts"}</SelectItem>
+                    <SelectItem value="all">{isBangla ? "সব জেলা" : "All districts"}</SelectItem>
                     {DISTRICT_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -112,7 +112,7 @@ export default function Resources() {
 
           <Card className="border-border/70 shadow-sm">
             <CardHeader>
-              <CardTitle>{isBangla ? "?????? ????????" : "Frequently asked questions"}</CardTitle>
+              <CardTitle>{isBangla ? "প্রায় জিজ্ঞাসিত প্রশ্ন" : "Frequently asked questions"}</CardTitle>
             </CardHeader>
             <CardContent>
               <Accordion type="single" collapsible className="w-full">

@@ -1,6 +1,9 @@
-import { Hospital, Phone, MapPinned } from "lucide-react";
+import { Hospital, MapPinned, Phone } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { translateSpecialtyLabel } from "@/shared/lib/i18n";
 import { districtPoints, specialistCenters } from "@/shared/lib/mock-data";
 import type { Specialty } from "@/shared/lib/types";
+import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import {
   Sheet,
@@ -10,7 +13,6 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/shared/ui/sheet";
-import { Badge } from "@/shared/ui/badge";
 
 interface SpecialistFinderSheetProps {
   open: boolean;
@@ -20,6 +22,8 @@ interface SpecialistFinderSheetProps {
 }
 
 export const SpecialistFinderSheet = ({ open, onOpenChange, district, specialty }: SpecialistFinderSheetProps) => {
+  const { t } = useTranslation();
+
   const matches = specialistCenters.filter((center) => {
     const districtMatch = district ? center.district === district : true;
     const specialtyMatch = specialty ? center.specialty === specialty : true;
@@ -33,16 +37,16 @@ export const SpecialistFinderSheet = ({ open, onOpenChange, district, specialty 
       </SheetTrigger>
       <SheetContent side="right" className="w-full max-w-xl">
         <SheetHeader>
-          <SheetTitle>Specialist centers</SheetTitle>
+          <SheetTitle>{t("specialistFinder.title")}</SheetTitle>
           <SheetDescription>
-            Recommended centers near {district || "your region"} for Goldenhar-related follow-up.
+            {t("specialistFinder.description", { district: district || t("specialistFinder.yourRegion") })}
           </SheetDescription>
         </SheetHeader>
         <div className="space-y-4 px-4 pb-6">
           <div className="flex flex-wrap gap-2">
             {district ? <Badge variant="secondary">{district}</Badge> : null}
-            {specialty ? <Badge variant="secondary">{specialty}</Badge> : null}
-            <Badge variant="outline">{matches.length} centers</Badge>
+            {specialty ? <Badge variant="secondary">{translateSpecialtyLabel(specialty)}</Badge> : null}
+            <Badge variant="outline">{t("specialistFinder.centersCount", { count: matches.length })}</Badge>
           </div>
           {matches.length ? (
             matches.map((center) => (
@@ -53,9 +57,11 @@ export const SpecialistFinderSheet = ({ open, onOpenChange, district, specialty 
                       <Hospital className="size-4 text-primary" />
                       {center.name}
                     </div>
-                    <div className="mt-1 text-sm text-muted-foreground">{center.specialty} · {center.district}</div>
+                    <div className="mt-1 text-sm text-muted-foreground">
+                      {translateSpecialtyLabel(center.specialty)} · {center.district}
+                    </div>
                   </div>
-                  <Badge>{center.specialty}</Badge>
+                  <Badge>{translateSpecialtyLabel(center.specialty)}</Badge>
                 </div>
                 <div className="mt-4 space-y-2 text-sm">
                   <div className="flex items-center gap-2 text-muted-foreground">
@@ -71,13 +77,15 @@ export const SpecialistFinderSheet = ({ open, onOpenChange, district, specialty 
             ))
           ) : (
             <div className="rounded-2xl border border-dashed border-border/70 p-6 text-sm text-muted-foreground">
-              No centers match the current district filter. Try Dhaka, Chattogram, or remove the specialty filter.
+              {t("specialistFinder.empty")}
             </div>
           )}
           <div className="rounded-2xl bg-muted/40 p-4 text-sm text-muted-foreground">
-            District coordinates loaded for {districtPoints.length} Bangladesh districts. This list can be connected to live referral directories later.
+            {t("specialistFinder.footer", { count: districtPoints.length })}
           </div>
-          <Button className="w-full" onClick={() => onOpenChange(false)}>Close</Button>
+          <Button className="w-full" onClick={() => onOpenChange(false)}>
+            {t("common.close")}
+          </Button>
         </div>
       </SheetContent>
     </Sheet>

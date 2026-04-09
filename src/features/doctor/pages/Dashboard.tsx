@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, ArrowRight, ClipboardList, ScanSearch, Send, UsersRound } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { Button } from "@/shared/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui/card";
@@ -15,6 +16,8 @@ import { useAuthStore } from "@/features/auth/store/authStore";
 import type { ReferralRecord, ScanRecord } from "@/shared/lib/types";
 
 export default function DoctorDashboard() {
+  const { i18n } = useTranslation();
+  const isBangla = i18n.language === "bn";
   const { profile } = useAuthStore();
   const { children, loading: childrenLoading } = useChildren(profile);
   const [scans, setScans] = useState<ScanRecord[]>([]);
@@ -58,45 +61,49 @@ export default function DoctorDashboard() {
   return (
     <PageTransition className="space-y-6">
       <PageHeader
-        title={`Clinical dashboard${profile.role === "chw" ? " (CHW)" : ""}`}
-        description="Monitor urgent findings, recent patients, and referral workload across your GoldenScope AI workspace."
+        title={isBangla ? `ক্লিনিক্যাল ড্যাশবোর্ড${profile.role === "chw" ? " (সিএইচডব্লিউ)" : ""}` : `Clinical dashboard${profile.role === "chw" ? " (CHW)" : ""}`}
+        description={isBangla ? "আপনার গোল্ডেনস্কোপ এআই ওয়ার্কস্পেসে জরুরি ফলাফল, সাম্প্রতিক রোগী এবং রেফারাল কাজ পর্যবেক্ষণ করুন।" : "Monitor urgent findings, recent patients, and referral workload across your GoldenScope AI workspace."}
         actions={
           <>
-            <Button asChild variant="outline" className="gap-2"><Link to="/doctor/referrals"><Send className="size-4" /> Send referral</Link></Button>
-            <Button asChild className="gap-2"><Link to="/doctor/new-scan"><ScanSearch className="size-4" /> New scan</Link></Button>
+            <Button asChild variant="outline" className="gap-2"><Link to="/doctor/referrals"><Send className="size-4" /> {isBangla ? "রেফারাল পাঠান" : "Send referral"}</Link></Button>
+            <Button asChild className="gap-2"><Link to="/doctor/new-scan"><ScanSearch className="size-4" /> {profile.role === "chw" ? (isBangla ? "স্ক্যান জমা দিন" : "Submit scan") : (isBangla ? "নতুন স্ক্যান" : "New scan")}</Link></Button>
           </>
         }
       />
 
       {urgentScans.length ? (
         <div className="rounded-3xl border border-rose-200 bg-rose-50/80 px-5 py-4 text-sm text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200">
-          <div className="flex items-center gap-2 font-semibold"><AlertTriangle className="size-4" /> Urgent follow-up required</div>
-          <div className="mt-1">{urgentScans.length} patients have severe findings with high-priority comorbidity flags. Prioritize cardiac screening and referral coordination.</div>
+          <div className="flex items-center gap-2 font-semibold"><AlertTriangle className="size-4" /> {isBangla ? "জরুরি ফলো-আপ প্রয়োজন" : "Urgent follow-up required"}</div>
+          <div className="mt-1">
+            {isBangla
+              ? `${urgentScans.length} জন রোগীর তীব্র ফলাফল ও উচ্চ-অগ্রাধিকার কোমরবিডিটি ফ্ল্যাগ রয়েছে। কার্ডিয়াক স্ক্রিনিং ও রেফারাল সমন্বয়কে অগ্রাধিকার দিন।`
+              : `${urgentScans.length} patients have severe findings with high-priority comorbidity flags. Prioritize cardiac screening and referral coordination.`}
+          </div>
         </div>
       ) : null}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard title="Total patients" value={String(children.length)} hint="Assigned or visible in your role" icon={<UsersRound className="size-4 text-primary" />} />
-        <MetricCard title="Scans this month" value={String(thisMonthScans)} hint="Fresh activity in current month" icon={<ScanSearch className="size-4 text-primary" />} />
-        <MetricCard title="Pending referrals" value={String(referrals.filter((referral) => referral.status !== "completed").length)} hint="Sent, accepted, or booked" icon={<Send className="size-4 text-primary" />} />
-        <MetricCard title="Avg severity" value={avgSeverity} hint="1 mild - 2 moderate - 3 severe" icon={<ClipboardList className="size-4 text-primary" />} />
+        <MetricCard title={isBangla ? "মোট রোগী" : "Total patients"} value={String(children.length)} hint={isBangla ? "আপনার ভূমিকায় নির্ধারিত বা দৃশ্যমান" : "Assigned or visible in your role"} icon={<UsersRound className="size-4 text-primary" />} />
+        <MetricCard title={isBangla ? "এই মাসের স্ক্যান" : "Scans this month"} value={String(thisMonthScans)} hint={isBangla ? "বর্তমান মাসের নতুন কার্যক্রম" : "Fresh activity in current month"} icon={<ScanSearch className="size-4 text-primary" />} />
+        <MetricCard title={isBangla ? "অপেক্ষমাণ রেফারাল" : "Pending referrals"} value={String(referrals.filter((referral) => referral.status !== "completed").length)} hint={isBangla ? "পাঠানো, গৃহীত বা বুকড" : "Sent, accepted, or booked"} icon={<Send className="size-4 text-primary" />} />
+        <MetricCard title={isBangla ? "গড় তীব্রতা" : "Avg severity"} value={avgSeverity} hint={isBangla ? "১ মৃদু - ২ মাঝারি - ৩ তীব্র" : "1 mild - 2 moderate - 3 severe"} icon={<ClipboardList className="size-4 text-primary" />} />
       </div>
 
       <Card className="border-border/70 shadow-sm">
         <CardHeader>
-          <CardTitle>Recent patients</CardTitle>
-          <CardDescription>Open any case to review scans, notes, and referrals.</CardDescription>
+          <CardTitle>{isBangla ? "সাম্প্রতিক রোগী" : "Recent patients"}</CardTitle>
+          <CardDescription>{isBangla ? "স্ক্যান, নোট এবং রেফারাল পর্যালোচনা করতে যেকোনো কেস খুলুন।" : "Open any case to review scans, notes, and referrals."}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Age</TableHead>
-                  <TableHead>Last scan</TableHead>
-                  <TableHead>Severity</TableHead>
-                  <TableHead>Action</TableHead>
+                  <TableHead>{isBangla ? "নাম" : "Name"}</TableHead>
+                  <TableHead>{isBangla ? "বয়স" : "Age"}</TableHead>
+                  <TableHead>{isBangla ? "সর্বশেষ স্ক্যান" : "Last scan"}</TableHead>
+                  <TableHead>{isBangla ? "তীব্রতা" : "Severity"}</TableHead>
+                  <TableHead>{isBangla ? "অ্যাকশন" : "Action"}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -106,13 +113,13 @@ export default function DoctorDashboard() {
                     <TableRow key={child.id}>
                       <TableCell className="font-medium">{child.name}</TableCell>
                       <TableCell>{calculateAge(child.dob)}</TableCell>
-                      <TableCell>{latestScan ? formatDate(latestScan.created_at) : "No scans"}</TableCell>
+                      <TableCell>{latestScan ? formatDate(latestScan.created_at) : (isBangla ? "কোনো স্ক্যান নেই" : "No scans")}</TableCell>
                       <TableCell>{latestScan ? <StatusBadge label={latestScan.severity} tone={latestScan.severity} /> : <StatusBadge label="pending" tone="negative" />}</TableCell>
                       <TableCell>
                         {latestScan ? (
-                          <Button asChild variant="ghost" className="gap-2"><Link to={`/doctor/scans/${latestScan.id}`}>Open case <ArrowRight className="size-4" /></Link></Button>
+                          <Button asChild variant="ghost" className="gap-2"><Link to={`/doctor/scans/${latestScan.id}`}>{isBangla ? "কেস খুলুন" : "Open case"} <ArrowRight className="size-4" /></Link></Button>
                         ) : (
-                          <Button asChild variant="outline"><Link to="/doctor/new-scan">New scan</Link></Button>
+                          <Button asChild variant="outline"><Link to="/doctor/new-scan">{isBangla ? "নতুন স্ক্যান" : "New scan"}</Link></Button>
                         )}
                       </TableCell>
                     </TableRow>
@@ -126,4 +133,3 @@ export default function DoctorDashboard() {
     </PageTransition>
   );
 }
-

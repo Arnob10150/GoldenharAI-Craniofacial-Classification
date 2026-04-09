@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/shared/ui/button";
 import { Card, CardContent } from "@/shared/ui/card";
 import { ScanResultPanel } from "@/features/patient/components/ScanResultPanel";
@@ -14,6 +15,8 @@ import type { Child, ReferralRecord, ScanRecord } from "@/shared/lib/types";
 
 export default function PatientScanResult() {
   const { scanId } = useParams();
+  const { i18n } = useTranslation();
+  const isBangla = i18n.language === "bn";
   const { profile } = useAuthStore();
   const [scan, setScan] = useState<ScanRecord | null>(null);
   const [child, setChild] = useState<Child | null>(null);
@@ -49,7 +52,12 @@ export default function PatientScanResult() {
   }, [profile, scanId]);
 
   if (loading) {
-    return <LoadingPanel title="Opening result board" description="Loading the scan summary, care pathway, and referral status." />;
+    return (
+      <LoadingPanel
+        title={isBangla ? "রেজাল্ট বোর্ড খোলা হচ্ছে" : "Opening result board"}
+        description={isBangla ? "স্ক্যান সারাংশ, কেয়ার পাথওয়ে এবং রেফারাল অবস্থা লোড হচ্ছে।" : "Loading the scan summary, care pathway, and referral status."}
+      />
+    );
   }
 
   if (!profile || !scan || !child) {
@@ -57,7 +65,7 @@ export default function PatientScanResult() {
       <PageTransition>
         <Card>
           <CardContent className="p-6">
-            Scan result not found or unavailable in this account.
+            {isBangla ? "এই অ্যাকাউন্টে স্ক্যান ফলাফল পাওয়া যায়নি অথবা এটি দেখা যাচ্ছে না।" : "Scan result not found or unavailable in this account."}
           </CardContent>
         </Card>
       </PageTransition>
@@ -67,15 +75,19 @@ export default function PatientScanResult() {
   return (
     <PageTransition className="space-y-6">
       <PageHeader
-        title={`Result board for ${child.name}`}
-        description="Review the AI finding in a dedicated screen with care pathway, comorbidity flags, and specialist next steps."
+        title={isBangla ? `${child.name}-এর রেজাল্ট বোর্ড` : `Result board for ${child.name}`}
+        description={
+          isBangla
+            ? "কেয়ার পাথওয়ে, কোমরবিডিটি ফ্ল্যাগ এবং বিশেষজ্ঞের পরবর্তী ধাপসহ একটি আলাদা স্ক্রিনে এআই ফলাফল পর্যালোচনা করুন।"
+            : "Review the AI finding in a dedicated screen with care pathway, comorbidity flags, and specialist next steps."
+        }
         actions={
           <>
             <Button variant="outline" asChild>
-              <Link to="/patient/new-scan">Analyze another image</Link>
+              <Link to="/patient/new-scan">{isBangla ? "আরেকটি ছবি বিশ্লেষণ করুন" : "Analyze another image"}</Link>
             </Button>
             <Button asChild>
-              <Link to="/patient/history">View scan history</Link>
+              <Link to="/patient/history">{isBangla ? "স্ক্যান ইতিহাস দেখুন" : "View scan history"}</Link>
             </Button>
           </>
         }

@@ -1,5 +1,6 @@
 import { Bell } from "lucide-react";
 import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/shared/ui/button";
 import {
@@ -15,6 +16,7 @@ import type { Profile } from "@/shared/lib/types";
 import { useNotificationStore } from "@/shared/store/notificationStore";
 
 export const NotificationBell = ({ profile }: { profile: Profile | null }) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { notifications, unreadCount, markRead } = useNotificationStore();
   useNotifications(profile);
@@ -36,7 +38,7 @@ export const NotificationBell = ({ profile }: { profile: Profile | null }) => {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[min(24rem,calc(100vw-1rem))]">
-        <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+        <DropdownMenuLabel>{t("common.notifications")}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         <div className="max-h-80 overflow-y-auto">
           {notifications.length ? (
@@ -56,7 +58,7 @@ export const NotificationBell = ({ profile }: { profile: Profile | null }) => {
               </DropdownMenuItem>
             ))
           ) : (
-            <div className="px-3 py-6 text-sm text-muted-foreground">No notifications yet.</div>
+            <div className="px-3 py-6 text-sm text-muted-foreground">{t("common.noNotifications")}</div>
           )}
         </div>
       </DropdownMenuContent>

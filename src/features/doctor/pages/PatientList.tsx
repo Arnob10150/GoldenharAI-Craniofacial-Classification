@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Download, Search } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/shared/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
@@ -17,19 +18,21 @@ import { formatDate } from "@/shared/lib/format";
 import { useAuthStore } from "@/features/auth/store/authStore";
 import type { ReferralRecord, ScanRecord } from "@/shared/lib/types";
 
-const exportCsv = (rows: Array<Record<string, string | number>>) => {
+const exportCsv = (rows: Array<Record<string, string | number>>, filename: string) => {
   const headers = Object.keys(rows[0] || {});
   const lines = [headers.join(","), ...rows.map((row) => headers.map((header) => JSON.stringify(row[header] ?? "")).join(","))];
   const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = "goldenscope-patient-list.csv";
+  link.download = filename;
   link.click();
   URL.revokeObjectURL(url);
 };
 
 export default function PatientList() {
+  const { i18n } = useTranslation();
+  const isBangla = i18n.language === "bn";
   const { profile } = useAuthStore();
   const { children, loading: childrenLoading } = useChildren(profile);
   const [scans, setScans] = useState<ScanRecord[]>([]);
@@ -75,33 +78,60 @@ export default function PatientList() {
   }, [children, query, referrals, scans, tab]);
 
   if (!profile || loading || childrenLoading) {
-    return <LoadingPanel title="Loading patient list" description="Preparing patient roster, latest scans, and referral status." />;
+    return (
+      <LoadingPanel
+        title={isBangla ? "রোগীর তালিকা লোড হচ্ছে" : "Loading patient list"}
+        description={isBangla ? "রোগীর তালিকা, সর্বশেষ স্ক্যান এবং রেফারাল অবস্থা প্রস্তুত করা হচ্ছে।" : "Preparing patient roster, latest scans, and referral status."}
+      />
+    );
   }
+
+  const csvRows = rows.map(({ child, latestScan, latestReferral }) => ({
+    Name: child.name,
+    Age: calculateAge(child.dob),
+    Severity: latestScan?.severity ?? (isBangla ? "কোনো স্ক্যান নেই" : "No scans"),
+    LastScan: latestScan ? formatDate(latestScan.created_at) : "",
+    ReferralStatus: latestReferral?.status ?? "",
+    Specialist: latestReferral ? getProfileDisplayName(latestReferral.to_doctor) : "",
+  }));
 
   return (
     <PageTransition className="space-y-6">
       <PageHeader
-        title="Patient list"
-        description="Search, filter, and export the patient roster based on scan severity and referral status."
-        actions={<Button variant="outline" className="gap-2" onClick={() => exportCsv(rows.map(({ child, latestScan, latestReferral }) => ({ Name: child.name, Age: calculateAge(child.dob), Severity: latestScan?.severity ?? "No scans", LastScan: latestScan ? formatDate(latestScan.created_at) : "", ReferralStatus: latestReferral?.status ?? "", Specialist: latestReferral ? getProfileDisplayName(latestReferral.to_doctor) : "" })))}><Download className="size-4" /> Export CSV</Button>}
+        title={isBangla ? "রোগীর তালিকা" : "Patient list"}
+        description={isBangla ? "স্ক্যানের তীব্রতা এবং রেফারাল অবস্থার ভিত্তিতে রোগীর তালিকা অনুসন্ধান, ফিল্টার এবং এক্সপোর্ট করুন।" : "Search, filter, and export the patient roster based on scan severity and referral status."}
+        actions={
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => exportCsv(csvRows, isBangla ? "goldenscope-patient-list-bn.csv" : "goldenscope-patient-list.csv")}
+          >
+            <Download className="size-4" /> {isBangla ? "CSV এক্সপোর্ট" : "Export CSV"}
+          </Button>
+        }
       />
 
       <Card className="border-border/70 shadow-sm">
         <CardHeader>
-          <CardTitle>Filters</CardTitle>
-          <CardDescription>Quickly focus on severity, pending referrals, or upcoming surgical windows.</CardDescription>
+          <CardTitle>{isBangla ? "ফিল্টার" : "Filters"}</CardTitle>
+          <CardDescription>{isBangla ? "তীব্র, অসম্পূর্ণ রেফারাল, অথবা আসন্ন সার্জিকাল উইন্ডো দ্রুত খুঁজে নিন।" : "Quickly focus on severity, pending referrals, or upcoming surgical windows."}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="relative max-w-md">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input className="pl-9" placeholder="Search patient by name" value={query} onChange={(event) => setQuery(event.target.value)} />
+            <Input
+              className="pl-9"
+              placeholder={isBangla ? "নাম দিয়ে রোগী খুঁজুন" : "Search patient by name"}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
           </div>
           <Tabs value={tab} onValueChange={setTab}>
             <TabsList className="grid w-full max-w-3xl grid-cols-4">
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="severe">Severe</TabsTrigger>
-              <TabsTrigger value="pending-referral">Pending referral</TabsTrigger>
-              <TabsTrigger value="window">Surgical window</TabsTrigger>
+              <TabsTrigger value="all">{isBangla ? "সব" : "All"}</TabsTrigger>
+              <TabsTrigger value="severe">{isBangla ? "তীব্র" : "Severe"}</TabsTrigger>
+              <TabsTrigger value="pending-referral">{isBangla ? "অপেক্ষমাণ রেফারাল" : "Pending referral"}</TabsTrigger>
+              <TabsTrigger value="window">{isBangla ? "সার্জিকাল উইন্ডো" : "Surgical window"}</TabsTrigger>
             </TabsList>
           </Tabs>
         </CardContent>
@@ -109,20 +139,20 @@ export default function PatientList() {
 
       <Card className="border-border/70 shadow-sm">
         <CardHeader>
-          <CardTitle>Roster</CardTitle>
-          <CardDescription>{rows.length} visible patients after filters.</CardDescription>
+          <CardTitle>{isBangla ? "রোস্টার" : "Roster"}</CardTitle>
+          <CardDescription>{isBangla ? `ফিল্টারের পরে ${rows.length} জন রোগী দেখা যাচ্ছে।` : `${rows.length} visible patients after filters.`}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Age</TableHead>
-                  <TableHead>Last scan</TableHead>
-                  <TableHead>Severity</TableHead>
-                  <TableHead>Assigned specialist</TableHead>
-                  <TableHead>Action</TableHead>
+                  <TableHead>{isBangla ? "নাম" : "Name"}</TableHead>
+                  <TableHead>{isBangla ? "বয়স" : "Age"}</TableHead>
+                  <TableHead>{isBangla ? "সর্বশেষ স্ক্যান" : "Last scan"}</TableHead>
+                  <TableHead>{isBangla ? "তীব্রতা" : "Severity"}</TableHead>
+                  <TableHead>{isBangla ? "নির্ধারিত বিশেষজ্ঞ" : "Assigned specialist"}</TableHead>
+                  <TableHead>{isBangla ? "অ্যাকশন" : "Action"}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -130,10 +160,26 @@ export default function PatientList() {
                   <TableRow key={child.id}>
                     <TableCell className="font-medium">{child.name}</TableCell>
                     <TableCell>{calculateAge(child.dob)}</TableCell>
-                    <TableCell>{latestScan ? formatDate(latestScan.created_at) : "No scans"}</TableCell>
-                    <TableCell>{latestScan ? <StatusBadge label={latestScan.severity} tone={latestScan.severity} /> : <StatusBadge label="pending" tone="negative" />}</TableCell>
-                    <TableCell>{latestReferral ? getProfileDisplayName(latestReferral.to_doctor) : "Not assigned"}</TableCell>
-                    <TableCell>{latestScan ? <Button asChild variant="ghost"><Link to={`/doctor/scans/${latestScan.id}`}>Open case</Link></Button> : <Button asChild variant="outline"><Link to="/doctor/new-scan">New scan</Link></Button>}</TableCell>
+                    <TableCell>{latestScan ? formatDate(latestScan.created_at) : (isBangla ? "কোনো স্ক্যান নেই" : "No scans")}</TableCell>
+                    <TableCell>
+                      {latestScan ? (
+                        <StatusBadge label={latestScan.severity} tone={latestScan.severity} />
+                      ) : (
+                        <StatusBadge label="pending" tone="negative" />
+                      )}
+                    </TableCell>
+                    <TableCell>{latestReferral ? getProfileDisplayName(latestReferral.to_doctor) : (isBangla ? "নির্ধারিত নয়" : "Not assigned")}</TableCell>
+                    <TableCell>
+                      {latestScan ? (
+                        <Button asChild variant="ghost">
+                          <Link to={`/doctor/scans/${latestScan.id}`}>{isBangla ? "কেস খুলুন" : "Open case"}</Link>
+                        </Button>
+                      ) : (
+                        <Button asChild variant="outline">
+                          <Link to="/doctor/new-scan">{isBangla ? "নতুন স্ক্যান" : "New scan"}</Link>
+                        </Button>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

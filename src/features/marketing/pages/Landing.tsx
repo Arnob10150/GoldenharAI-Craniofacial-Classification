@@ -28,7 +28,8 @@ const useCounter = (target: number, duration = 1400) => {
 };
 
 export default function Landing() {
-  const { t } = useTranslation();
+  const { i18n, t } = useTranslation();
+  const isBangla = i18n.language === "bn";
   const childrenCounter = useCounter(3500);
   const speedCounter = useCounter(60);
   const accuracyCounter = useCounter(87);
@@ -37,21 +38,27 @@ export default function Landing() {
     () => [
       {
         icon: FileSearch2,
-        title: "Upload a clinical image",
-        description: "Parents, CHWs, or doctors upload a relevant photo and add the child details needed for age-aware analysis.",
+        title: isBangla ? "একটি ক্লিনিক্যাল ছবি আপলোড করুন" : "Upload a clinical image",
+        description: isBangla
+          ? "অভিভাবক, সিএইচডব্লিউ বা ডাক্তার একটি প্রাসঙ্গিক ছবি আপলোড করেন এবং বয়সভিত্তিক বিশ্লেষণের জন্য শিশুর তথ্য যোগ করেন।"
+          : "Parents, CHWs, or doctors upload a relevant photo and add the child details needed for age-aware analysis.",
       },
       {
         icon: BrainCircuit,
-        title: "Receive explainable AI findings",
-        description: "GoldenScope AI returns classification, confidence, comorbidity flags, surgical windows, and attention regions.",
+        title: isBangla ? "ব্যাখ্যাযোগ্য এআই ফলাফল পান" : "Receive explainable AI findings",
+        description: isBangla
+          ? "গোল্ডেনস্কোপ এআই শ্রেণিবিন্যাস, নিশ্চয়তা, কোমরবিডিটি ফ্ল্যাগ, অস্ত্রোপচারের সময়সীমা এবং অ্যাটেনশন অঞ্চল দেখায়।"
+          : "GoldenScope AI returns classification, confidence, comorbidity flags, surgical windows, and attention regions.",
       },
       {
         icon: Workflow,
-        title: "Move directly into care coordination",
-        description: "Generate reports, send referrals, monitor status in realtime, and track cases across districts and specialists.",
+        title: isBangla ? "সরাসরি পরিচর্যা সমন্বয়ে যান" : "Move directly into care coordination",
+        description: isBangla
+          ? "রিপোর্ট তৈরি করুন, রেফারাল পাঠান, রিয়েলটাইমে অবস্থা পর্যবেক্ষণ করুন এবং জেলা ও বিশেষজ্ঞভিত্তিক কেস ট্র্যাক করুন।"
+          : "Generate reports, send referrals, monitor status in realtime, and track cases across districts and specialists.",
       },
     ],
-    [],
+    [isBangla],
   );
 
   return (
@@ -60,13 +67,17 @@ export default function Landing() {
       <main>
         <section className="mx-auto grid max-w-7xl gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[1.1fr_0.9fr] lg:px-8 lg:py-24">
           <div className="space-y-8">
-            <Badge className="rounded-full bg-primary/10 px-4 py-1 text-primary hover:bg-primary/10">AI for pediatric screening, referrals, and follow-up</Badge>
+            <Badge className="rounded-full bg-primary/10 px-4 py-1 text-primary hover:bg-primary/10">
+              {isBangla ? "শিশু স্ক্রিনিং, রেফারাল ও ফলো-আপের জন্য এআই" : "AI for pediatric screening, referrals, and follow-up"}
+            </Badge>
             <div className="space-y-5">
               <h1 className="max-w-3xl text-5xl font-semibold tracking-tight text-balance sm:text-6xl">
-                {t("landing.headline")}
+                {isBangla ? "গোল্ডেনহার স্ক্রিনিং ও শিশু পরিচর্যা সমন্বয়ের জন্য এআই-সহায়ক প্ল্যাটফর্ম" : t("landing.headline")}
               </h1>
               <p className="max-w-2xl text-lg leading-8 text-muted-foreground">
-                {t("landing.subheadline")} GoldenScope AI gives families, doctors, and community health workers one place to screen, explain, refer, and monitor Goldenhar-related care.
+                {isBangla
+                  ? "প্রাথমিক ট্রায়াজ, বিশেষজ্ঞ রেফারাল এবং দীর্ঘমেয়াদি পরিচর্যা ব্যবস্থাপনার জন্য একটি দ্বিমুখী ক্লিনিক্যাল প্ল্যাটফর্ম। গোল্ডেনস্কোপ এআই পরিবার, ডাক্তার এবং কমিউনিটি স্বাস্থ্যকর্মীদের জন্য স্ক্রিনিং, ব্যাখ্যা, রেফারাল এবং পর্যবেক্ষণের একটি একক জায়গা দেয়।"
+                  : `${t("landing.subheadline")} GoldenScope AI gives families, doctors, and community health workers one place to screen, explain, refer, and monitor Goldenhar-related care.`}
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -80,24 +91,30 @@ export default function Landing() {
             <div className="grid gap-4 sm:grid-cols-3">
               <Card className="border-border/70 bg-card/80 shadow-sm">
                 <CardHeader className="pb-2">
-                  <CardDescription>Global rarity</CardDescription>
+                  <CardDescription>{isBangla ? "বিশ্বব্যাপী বিরলতা" : "Global rarity"}</CardDescription>
                   <CardTitle className="text-3xl">1 in {childrenCounter.toLocaleString()}</CardTitle>
                 </CardHeader>
-                <CardContent className="text-sm text-muted-foreground">A memorable awareness stat for the pitch and patient education flow.</CardContent>
+                <CardContent className="text-sm text-muted-foreground">
+                  {isBangla ? "পিচ এবং রোগী সচেতনতার জন্য একটি স্মরণীয় পরিসংখ্যান।" : "A memorable awareness stat for the pitch and patient education flow."}
+                </CardContent>
               </Card>
               <Card className="border-border/70 bg-card/80 shadow-sm">
                 <CardHeader className="pb-2">
-                  <CardDescription>AI turnaround</CardDescription>
+                  <CardDescription>{isBangla ? "এআই টার্নঅ্যারাউন্ড" : "AI turnaround"}</CardDescription>
                   <CardTitle className="text-3xl">&lt; {speedCounter}s</CardTitle>
                 </CardHeader>
-                <CardContent className="text-sm text-muted-foreground">Upload to result with explainability, care pathway, and exportable report.</CardContent>
+                <CardContent className="text-sm text-muted-foreground">
+                  {isBangla ? "আপলোড থেকে ফলাফল পর্যন্ত ব্যাখ্যা, কেয়ার পথ এবং রিপোর্ট এক্সপোর্টসহ।" : "Upload to result with explainability, care pathway, and exportable report."}
+                </CardContent>
               </Card>
               <Card className="border-border/70 bg-card/80 shadow-sm">
                 <CardHeader className="pb-2">
-                  <CardDescription>Model benchmark</CardDescription>
+                  <CardDescription>{isBangla ? "মডেল বেঞ্চমার্ক" : "Model benchmark"}</CardDescription>
                   <CardTitle className="text-3xl">{accuracyCounter}%</CardTitle>
                 </CardHeader>
-                <CardContent className="text-sm text-muted-foreground">Use your current research metric here until the live inference service is connected.</CardContent>
+                <CardContent className="text-sm text-muted-foreground">
+                  {isBangla ? "লাইভ ইনফারেন্স সার্ভিস যুক্ত হওয়া পর্যন্ত আপনার বর্তমান গবেষণা মেট্রিক ব্যবহার করুন।" : "Use your current research metric here until the live inference service is connected."}
+                </CardContent>
               </Card>
             </div>
           </div>
@@ -111,8 +128,8 @@ export default function Landing() {
                     <BrainCircuit className="size-6" />
                   </span>
                   <div>
-                    <CardTitle className="text-2xl">Two-sided clinical platform</CardTitle>
-                    <CardDescription>Designed for families, CHWs, pediatric specialists, and referral networks.</CardDescription>
+                    <CardTitle className="text-2xl">{isBangla ? "দ্বিমুখী ক্লিনিক্যাল প্ল্যাটফর্ম" : "Two-sided clinical platform"}</CardTitle>
+                    <CardDescription>{isBangla ? "পরিবার, সিএইচডব্লিউ, শিশু বিশেষজ্ঞ এবং রেফারাল নেটওয়ার্কের জন্য ডিজাইন করা হয়েছে।" : "Designed for families, CHWs, pediatric specialists, and referral networks."}</CardDescription>
                   </div>
                 </div>
               </CardHeader>
@@ -122,24 +139,24 @@ export default function Landing() {
                     <div className="mb-3 flex size-10 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
                       <ShieldCheck className="size-5" />
                     </div>
-                    <div className="font-semibold">Parent portal</div>
-                    <p className="mt-2 text-sm text-muted-foreground">Upload scans, review care pathways, track appointments, and access bilingual resources.</p>
+                    <div className="font-semibold">{isBangla ? "প্যারেন্ট পোর্টাল" : "Parent portal"}</div>
+                    <p className="mt-2 text-sm text-muted-foreground">{isBangla ? "স্ক্যান আপলোড করুন, কেয়ার পথ দেখুন, অ্যাপয়েন্টমেন্ট অনুসরণ করুন এবং দ্বিভাষিক রিসোর্স ব্যবহার করুন।" : "Upload scans, review care pathways, track appointments, and access bilingual resources."}</p>
                   </div>
                   <div className="rounded-3xl bg-muted/50 p-5">
                     <div className="mb-3 flex size-10 items-center justify-center rounded-2xl bg-sky-500/15 text-sky-700 dark:text-sky-300">
                       <HeartPulse className="size-5" />
                     </div>
-                    <div className="font-semibold">Doctor dashboard</div>
-                    <p className="mt-2 text-sm text-muted-foreground">Review AI findings, send referrals, compare scans, and monitor district-level trends.</p>
+                    <div className="font-semibold">{isBangla ? "ডাক্তার ড্যাশবোর্ড" : "Doctor dashboard"}</div>
+                    <p className="mt-2 text-sm text-muted-foreground">{isBangla ? "এআই ফলাফল পর্যালোচনা করুন, রেফারাল পাঠান, স্ক্যান তুলনা করুন এবং জেলা-ভিত্তিক প্রবণতা পর্যবেক্ষণ করুন।" : "Review AI findings, send referrals, compare scans, and monitor district-level trends."}</p>
                   </div>
                 </div>
                 <div className="rounded-3xl border border-border/60 bg-background/80 p-5">
                   <div className="flex items-start gap-3">
                     <Activity className="mt-1 size-5 text-primary" />
                     <div>
-                      <div className="font-semibold">Built for fragmented pediatric care settings</div>
+                      <div className="font-semibold">{isBangla ? "বিচ্ছিন্ন শিশু পরিচর্যা পরিবেশের জন্য তৈরি" : "Built for fragmented pediatric care settings"}</div>
                       <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                        GoldenScope AI combines early screening, clinical explainability, referral routing, and community support so families do not have to navigate multiple disconnected tools.
+                        {isBangla ? "গোল্ডেনস্কোপ এআই প্রাথমিক স্ক্রিনিং, ক্লিনিক্যাল ব্যাখ্যা, রেফারাল রাউটিং এবং কমিউনিটি সাপোর্ট একত্র করে যাতে পরিবারকে আলাদা আলাদা টুল ব্যবহার করতে না হয়।" : "GoldenScope AI combines early screening, clinical explainability, referral routing, and community support so families do not have to navigate multiple disconnected tools."}
                       </p>
                     </div>
                   </div>
@@ -153,7 +170,7 @@ export default function Landing() {
           <div className="mb-8 flex items-end justify-between gap-4">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">{t("landing.howItWorks")}</p>
-              <h2 className="mt-2 text-3xl font-semibold tracking-tight">Simple workflow, clinically useful output</h2>
+              <h2 className="mt-2 text-3xl font-semibold tracking-tight">{isBangla ? "সহজ ওয়ার্কফ্লো, ক্লিনিক্যালি কার্যকর আউটপুট" : "Simple workflow, clinically useful output"}</h2>
             </div>
           </div>
           <div className="grid gap-5 lg:grid-cols-3">
@@ -180,13 +197,13 @@ export default function Landing() {
       <footer className="border-t border-border/60 bg-card/60">
         <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-10 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
           <div>
-            <div className="font-semibold">GoldenScope AI</div>
-            <div className="mt-1 text-sm text-muted-foreground">Screening and care coordination platform for Goldenhar Syndrome.</div>
+            <div className="font-semibold">{t("common.appName")}</div>
+            <div className="mt-1 text-sm text-muted-foreground">{isBangla ? "গোল্ডেনহার সিনড্রোমের জন্য স্ক্রিনিং ও পরিচর্যা সমন্বয় প্ল্যাটফর্ম।" : "Screening and care coordination platform for Goldenhar Syndrome."}</div>
           </div>
           <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
             <div className="rounded-full border border-border/60 px-4 py-2">Harvard HSIL</div>
             <div className="rounded-full border border-border/60 px-4 py-2">AIUB</div>
-            <div className="rounded-full border border-border/60 px-4 py-2">GoldenScope AI research stack</div>
+            <div className="rounded-full border border-border/60 px-4 py-2">{isBangla ? "গোল্ডেনস্কোপ এআই গবেষণা স্ট্যাক" : "GoldenScope AI research stack"}</div>
           </div>
         </div>
       </footer>

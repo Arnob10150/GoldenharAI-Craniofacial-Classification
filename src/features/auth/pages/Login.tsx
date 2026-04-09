@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useTranslation } from "react-i18next";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { ArrowLeft, BrainCircuit, LockKeyhole, Mail } from "lucide-react";
@@ -20,9 +21,11 @@ const loginSchema = z.object({
 type LoginForm = z.infer<typeof loginSchema>;
 
 export default function Login() {
+  const { i18n, t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const { login, loading } = useAuthStore();
+  const isBangla = i18n.language === "bn";
 
   const form = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
@@ -38,10 +41,10 @@ export default function Login() {
     try {
       await login(values.email, values.password);
       const profile = useAuthStore.getState().profile;
-      toast.success("Welcome back to GoldenScope AI.");
+      toast.success(t("toast.welcomeBack"));
       navigate(nextPath || (profile ? homeByRole[profile.role] : "/"), { replace: true });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to sign in.");
+      toast.error(error instanceof Error ? error.message : t("toast.unableToSignIn", { defaultValue: "Unable to sign in." }));
     }
   });
 
@@ -53,7 +56,7 @@ export default function Login() {
             <Button asChild variant="ghost" className="gap-2 px-0 text-muted-foreground hover:text-foreground">
               <Link to="/">
                 <ArrowLeft className="size-4" />
-                Return to home
+                {isBangla ? "হোমে ফিরে যান" : "Return to home"}
               </Link>
             </Button>
           </div>
@@ -61,16 +64,18 @@ export default function Login() {
             <BrainCircuit className="size-6" />
           </div>
           <div>
-            <CardTitle className="text-3xl">Log in to GoldenScope AI</CardTitle>
+            <CardTitle className="text-3xl">{isBangla ? "গোল্ডেনস্কোপ এআই-এ লগ ইন করুন" : "Log in to GoldenScope AI"}</CardTitle>
             <CardDescription className="mt-2 text-base leading-7">
-              Continue to the parent portal, clinical dashboard, or CHW workflow using your registered account.
+              {isBangla
+                ? "আপনার নিবন্ধিত অ্যাকাউন্ট ব্যবহার করে প্যারেন্ট পোর্টাল, ক্লিনিক্যাল ড্যাশবোর্ড বা সিএইচডব্লিউ ওয়ার্কফ্লোতে যান।"
+                : "Continue to the parent portal, clinical dashboard, or CHW workflow using your registered account."}
             </CardDescription>
           </div>
         </CardHeader>
         <CardContent>
           <form className="space-y-5" onSubmit={onSubmit}>
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t("common.email")}</Label>
               <div className="relative">
                 <Mail className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input id="email" type="email" className="pl-9" placeholder="doctor@goldenscope.ai" {...form.register("email")} />
@@ -78,22 +83,27 @@ export default function Login() {
               {form.formState.errors.email ? <p className="text-sm text-destructive">{form.formState.errors.email.message}</p> : null}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t("common.password")}</Label>
               <div className="relative">
                 <LockKeyhole className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input id="password" type="password" className="pl-9" placeholder="Enter your password" {...form.register("password")} />
+                <Input id="password" type="password" className="pl-9" placeholder={isBangla ? "আপনার পাসওয়ার্ড লিখুন" : "Enter your password"} {...form.register("password")} />
               </div>
               {form.formState.errors.password ? <p className="text-sm text-destructive">{form.formState.errors.password.message}</p> : null}
             </div>
             <Button type="submit" size="lg" className="w-full rounded-full" disabled={loading}>
-              {loading ? "Signing you in..." : "Log in"}
+              {loading ? (isBangla ? "লগ ইন করা হচ্ছে..." : "Signing you in...") : t("common.login")}
             </Button>
           </form>
           <p className="mt-6 text-sm text-muted-foreground">
-            New to GoldenScope AI? <Link to="/auth/register" className="font-medium text-primary underline-offset-4 hover:underline">Create an account</Link>
+            {isBangla ? "গোল্ডেনস্কোপ এআই-এ নতুন?" : "New to GoldenScope AI?"}{" "}
+            <Link to="/auth/register" className="font-medium text-primary underline-offset-4 hover:underline">
+              {isBangla ? "একটি অ্যাকাউন্ট তৈরি করুন" : "Create an account"}
+            </Link>
           </p>
           <div className="mt-8 rounded-2xl bg-muted/40 p-4 text-sm text-muted-foreground">
-            Demo accounts are seeded in mock mode. If Supabase is configured, real auth and profile records will be used automatically.
+            {isBangla
+              ? "মক মোডে ডেমো অ্যাকাউন্টগুলো আগে থেকেই আছে। Supabase কনফিগার করা থাকলে স্বয়ংক্রিয়ভাবে বাস্তব অথ ও প্রোফাইল রেকর্ড ব্যবহৃত হবে।"
+              : "Demo accounts are seeded in mock mode. If Supabase is configured, real auth and profile records will be used automatically."}
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {[
@@ -113,17 +123,33 @@ export default function Login() {
         </CardContent>
       </Card>
       <div className="space-y-6">
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">Secure role-based access</p>
-        <h1 className="max-w-2xl text-5xl font-semibold tracking-tight text-balance">One sign-in, two coordinated portals, realtime care status.</h1>
+        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">{isBangla ? "নিরাপদ ভূমিকা-ভিত্তিক প্রবেশাধিকার" : "Secure role-based access"}</p>
+        <h1 className="max-w-2xl text-5xl font-semibold tracking-tight text-balance">
+          {isBangla ? "একটি লগইন, দুইটি সমন্বিত পোর্টাল, রিয়েলটাইম কেয়ার অবস্থা।" : "One sign-in, two coordinated portals, realtime care status."}
+        </h1>
         <p className="max-w-2xl text-lg leading-8 text-muted-foreground">
-          Parents review results and appointments, while doctors and CHWs move directly from scan findings into referrals, notes, and follow-up tracking.
+          {isBangla
+            ? "অভিভাবকরা ফলাফল ও অ্যাপয়েন্টমেন্ট দেখেন, আর ডাক্তার ও সিএইচডব্লিউরা সরাসরি স্ক্যান ফলাফল থেকে রেফারাল, নোট ও ফলো-আপে যেতে পারেন।"
+            : "Parents review results and appointments, while doctors and CHWs move directly from scan findings into referrals, notes, and follow-up tracking."}
         </p>
         <div className="grid gap-4 md:grid-cols-2">
           {[
-            ["Parents", "Track children, reports, scan history, and appointments in Bengali or English."],
-            ["Doctors", "Review explainable findings, send referrals, and compare scans longitudinally."],
-            ["CHWs", "Submit scans in the field and trigger instant doctor notifications."],
-            ["Admins", "Monitor system-wide analytics, coverage gaps, and referral completion."],
+            [
+              isBangla ? "অভিভাবক" : "Parents",
+              isBangla ? "বাংলা বা ইংরেজিতে শিশু, রিপোর্ট, স্ক্যান ইতিহাস এবং অ্যাপয়েন্টমেন্ট ট্র্যাক করুন।" : "Track children, reports, scan history, and appointments in Bengali or English.",
+            ],
+            [
+              isBangla ? "ডাক্তার" : "Doctors",
+              isBangla ? "ব্যাখ্যাযোগ্য ফলাফল দেখুন, রেফারাল পাঠান এবং সময়ের সাথে স্ক্যান তুলনা করুন।" : "Review explainable findings, send referrals, and compare scans longitudinally.",
+            ],
+            [
+              isBangla ? "সিএইচডব্লিউ" : "CHWs",
+              isBangla ? "মাঠে স্ক্যান জমা দিন এবং তাৎক্ষণিক ডাক্তার নোটিফিকেশন পাঠান।" : "Submit scans in the field and trigger instant doctor notifications.",
+            ],
+            [
+              isBangla ? "অ্যাডমিন" : "Admins",
+              isBangla ? "সিস্টেম-ব্যাপী অ্যানালিটিক্স, কভারেজ গ্যাপ এবং রেফারাল সম্পন্ন হওয়া পর্যবেক্ষণ করুন।" : "Monitor system-wide analytics, coverage gaps, and referral completion.",
+            ],
           ].map(([title, copy]) => (
             <div key={title} className="rounded-3xl border border-border/60 bg-card/70 p-5 shadow-sm">
               <div className="font-semibold">{title}</div>
