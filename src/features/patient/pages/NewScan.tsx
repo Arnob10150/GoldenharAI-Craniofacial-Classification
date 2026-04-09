@@ -266,9 +266,11 @@ export default function PatientNewScan() {
           </CardHeader>
           <CardContent className="space-y-5">
             {previewUrl ? (
-              <img src={previewUrl} alt={isBangla ? "স্ক্যান প্রিভিউ" : "Scan preview"} className="h-80 w-full rounded-3xl object-cover" />
+              <div className="mx-auto aspect-square w-full max-w-md overflow-hidden rounded-[2rem] border border-border/60 bg-muted/20 shadow-inner">
+                <img src={previewUrl} alt={isBangla ? "স্ক্যান প্রিভিউ" : "Scan preview"} className="h-full w-full object-cover" />
+              </div>
             ) : (
-              <div className="flex h-80 items-center justify-center rounded-3xl border border-dashed border-border/70 bg-muted/20 text-sm text-muted-foreground">
+              <div className="mx-auto flex aspect-square w-full max-w-md items-center justify-center rounded-[2rem] border border-dashed border-border/70 bg-muted/20 p-6 text-center text-sm text-muted-foreground">
                 {isBangla ? "ছবির প্রিভিউ এখানে দেখা যাবে।" : "Image preview will appear here."}
               </div>
             )}
