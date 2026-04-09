@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import io
 import os
 from functools import lru_cache
@@ -310,6 +311,43 @@ def saliency_heatmap(model: tf.keras.Model, image_batch: np.ndarray) -> tuple[np
     return saliency.numpy(), int(prediction_index.numpy())
 
 
+def heatmap_to_rgb(heatmap: np.ndarray) -> np.ndarray:
+    heat = np.clip(heatmap.astype(np.float32), 0.0, 1.0)
+    red = np.clip(1.5 - np.abs(4.0 * heat - 3.0), 0.0, 1.0)
+    green = np.clip(1.5 - np.abs(4.0 * heat - 2.0), 0.0, 1.0)
+    blue = np.clip(1.5 - np.abs(4.0 * heat - 1.0), 0.0, 1.0)
+    return np.stack([red, green, blue], axis=-1)
+
+
+def image_array_to_data_url(image_array: np.ndarray) -> str:
+    image = Image.fromarray(image_array.astype(np.uint8))
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    encoded = base64.b64encode(buffer.getvalue()).decode("utf-8")
+    return f"data:image/png;base64,{encoded}"
+
+
+def build_xai_visuals(image_uint8: np.ndarray, heatmap: np.ndarray) -> dict[str, str]:
+    image = np.clip(image_uint8.astype(np.float32) / 255.0, 0.0, 1.0)
+    heat_rgb = heatmap_to_rgb(heatmap)
+    heat_strength = np.clip(np.power(heatmap, 0.85), 0.0, 1.0)
+    overlay_alpha = 0.18 + heat_strength * 0.52
+    overlay = image * (1.0 - overlay_alpha[..., None]) + heat_rgb * overlay_alpha[..., None]
+
+    gray = np.dot(image[..., :3], [0.299, 0.587, 0.114])
+    gray_rgb = np.stack([gray, gray, gray], axis=-1)
+    threshold = float(np.quantile(heatmap, 0.82))
+    focus_strength = np.clip((heatmap - threshold) / max(1e-6, 1.0 - threshold), 0.0, 1.0)
+    focus_base = gray_rgb * 0.72
+    focus = focus_base * (1.0 - focus_strength[..., None]) + image * focus_strength[..., None]
+    focus = np.clip(focus + heat_rgb * (focus_strength[..., None] * 0.35), 0.0, 1.0)
+
+    return {
+        "gradcam_overlay_url": image_array_to_data_url(np.clip(overlay * 255.0, 0, 255)),
+        "focus_map_url": image_array_to_data_url(np.clip(focus * 255.0, 0, 255)),
+    }
+
+
 def heatmap_region_scores(heatmap: np.ndarray, class_name: str) -> list[dict[str, Any]]:
     regions = REGION_TEMPLATES[class_name]
     h, w = heatmap.shape
@@ -564,7 +602,7 @@ async def predict(
     if not file_bytes:
         raise HTTPException(status_code=400, detail="Uploaded image was empty.")
 
-    image_batch, _ = preprocess_image(file_bytes)
+    image_batch, resized_image = preprocess_image(file_bytes)
 
     try:
         probabilities = model.predict(image_batch, verbose=0)[0]
@@ -579,6 +617,7 @@ async def predict(
     try:
         heatmap, explanation_index = saliency_heatmap(model, image_batch)
         xai_regions = heatmap_region_scores(heatmap, predicted_class)
+        xai_visuals = build_xai_visuals(resized_image, heatmap)
     except Exception:
         explanation_index = predicted_index
         xai_regions = [
@@ -587,6 +626,7 @@ async def predict(
             {"region": "secondary_signal", "attention": 0.56},
             {"region": "background", "attention": 0.22},
         ]
+        xai_visuals = {}
 
     variant = derive_variant(predicted_class, xai_regions)
     classification = derive_classification(confidence)
@@ -622,6 +662,7 @@ async def predict(
         "patient_sex": patient_sex,
         "explanation_prediction_index": explanation_index,
         "xai_method": "gradient_saliency",
+        "xai_visuals": xai_visuals,
     }
 
 

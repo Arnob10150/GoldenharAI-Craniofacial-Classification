@@ -77,6 +77,17 @@ export interface InferenceResponse {
   comorbidity_flags: ComorbidityFlag[];
   surgical_windows: SurgicalWindow[];
   care_pathway: CareAction[];
+  xai_visuals?: {
+    gradcam_overlay_url?: string;
+    focus_map_url?: string;
+  };
+  predicted_class?: string;
+  top_predictions?: Array<{ label: string; probability: number }>;
+  model_name?: string;
+  model_mode?: string;
+  patient_sex?: string;
+  explanation_prediction_index?: number;
+  xai_method?: string;
 }
 
 export interface ScanRecord {

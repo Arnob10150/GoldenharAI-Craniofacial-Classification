@@ -186,6 +186,8 @@ const addPatientDetails = (
 export const downloadPatientReport = async (scan: ScanRecord, child: Child, language: "en" | "bn") => {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const inputImage = await loadImageDataUrl(scan.image_url);
+  const gradCamImage = scan.raw_inference_response.xai_visuals?.gradcam_overlay_url ?? null;
+  const focusMapImage = scan.raw_inference_response.xai_visuals?.focus_map_url ?? null;
   const confidenceChart = createConfidenceChartDataUrl(scan);
   const xaiChart = createHorizontalBarChartDataUrl(
     "Explainability attention",
@@ -215,6 +217,8 @@ export const downloadPatientReport = async (scan: ScanRecord, child: Child, lang
   ], y);
 
   y = addImageBlock(doc, "Confidence and classification", confidenceChart, y, 64);
+  y = addImageBlock(doc, "Grad-CAM explanation", gradCamImage, y, 68);
+  y = addImageBlock(doc, "Focus map", focusMapImage, y, 68);
   y = addImageBlock(doc, "Explainability chart", xaiChart, y, 70);
   y = addImageBlock(doc, "Comorbidity risk chart", riskChart, y, 66);
   y = addImageBlock(doc, "Surgical timing diagram", timelineChart, y, 74);
@@ -236,6 +240,8 @@ export const downloadClinicalReport = async (
 ) => {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const inputImage = await loadImageDataUrl(scan.image_url);
+  const gradCamImage = scan.raw_inference_response.xai_visuals?.gradcam_overlay_url ?? null;
+  const focusMapImage = scan.raw_inference_response.xai_visuals?.focus_map_url ?? null;
   const confidenceChart = createConfidenceChartDataUrl(scan);
   const segmentationChart = createHorizontalBarChartDataUrl(
     "Segmentation findings",
@@ -280,6 +286,8 @@ export const downloadClinicalReport = async (
   ], y);
 
   y = addImageBlock(doc, "Confidence and diagnostic overview", confidenceChart, y, 64);
+  y = addImageBlock(doc, "Grad-CAM explanation", gradCamImage, y, 68);
+  y = addImageBlock(doc, "Focus map", focusMapImage, y, 68);
   y = addImageBlock(doc, "Segmentation diagram", segmentationChart, y, 74);
   y = addImageBlock(doc, "Comorbidity risk diagram", riskChart, y, 66);
   y = addImageBlock(doc, "Surgical planning timeline", timelineChart, y, 74);

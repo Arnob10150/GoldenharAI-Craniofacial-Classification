@@ -105,6 +105,21 @@ const normalizeCarePathway = (value: unknown): CareAction[] => {
     .filter((entry): entry is CareAction => Boolean(entry));
 };
 
+const normalizeXaiVisuals = (value: unknown) => {
+  if (!value || typeof value !== "object") return undefined;
+  const gradcam = typeof (value as { gradcam_overlay_url?: unknown }).gradcam_overlay_url === "string"
+    ? String((value as { gradcam_overlay_url?: unknown }).gradcam_overlay_url)
+    : undefined;
+  const focus = typeof (value as { focus_map_url?: unknown }).focus_map_url === "string"
+    ? String((value as { focus_map_url?: unknown }).focus_map_url)
+    : undefined;
+  if (!gradcam && !focus) return undefined;
+  return {
+    gradcam_overlay_url: gradcam,
+    focus_map_url: focus,
+  };
+};
+
 const toErrorMessage = async (response: Response) => {
   try {
     const data = await response.json();
@@ -148,6 +163,24 @@ export const requestInference = async (image: File, patientAge: number, patientS
       comorbidity_flags: normalizeComorbidities(data.comorbidity_flags),
       surgical_windows: normalizeSurgicalWindows(data.surgical_windows),
       care_pathway: normalizeCarePathway(data.care_pathway),
+      xai_visuals: normalizeXaiVisuals(data.xai_visuals),
+      predicted_class: typeof data.predicted_class === "string" ? data.predicted_class : undefined,
+      top_predictions: Array.isArray(data.top_predictions)
+        ? data.top_predictions
+            .map((entry) => {
+              if (!entry || typeof entry !== "object") return null;
+              const label = String((entry as { label?: unknown }).label ?? "").trim();
+              const probability = normalizeUnitFloat((entry as { probability?: unknown }).probability, -1);
+              if (!label || probability < 0) return null;
+              return { label, probability };
+            })
+            .filter((entry): entry is { label: string; probability: number } => Boolean(entry))
+        : undefined,
+      model_name: typeof data.model_name === "string" ? data.model_name : undefined,
+      model_mode: typeof data.model_mode === "string" ? data.model_mode : undefined,
+      patient_sex: typeof data.patient_sex === "string" ? data.patient_sex : undefined,
+      explanation_prediction_index: typeof data.explanation_prediction_index === "number" ? data.explanation_prediction_index : undefined,
+      xai_method: typeof data.xai_method === "string" ? data.xai_method : undefined,
     };
 
     if (!normalized.xai_regions.length || !normalized.segmentation.length || !normalized.care_pathway.length) {
